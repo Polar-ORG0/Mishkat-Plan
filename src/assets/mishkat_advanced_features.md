@@ -448,25 +448,357 @@ cli/
 
 ---
 
-## 2. Mishkat Version Control & Compressed Storage (MVC)
+## 2. Mishkat Knowledge Sync & Compressed Storage (MKS)
 
 ### Overview
 
-**MVC (Mishkat Version Control)** is a self-hosted, Git-inspired version control system built specifically for the Mishkat knowledge base. It lets your university team track every change to every hadith collection, embedding snapshot, metadata file, and research document — with full history, branching, diffing, and rollback — **without any dependency on GitHub, GitLab, or any external service**.
+**MKS (Mishkat Knowledge Sync)** is a self-hosted knowledge distribution and synchronization system built specifically for Islamic knowledge bases. It lets your university team **pull** hadith collections, tafsir, and scholarly books from a central server, **push** new or corrected content back, and **edit parts of existing collections incrementally** — without re-uploading everything from scratch.
 
-MVC is your project's own internal source of truth. All storage, history, access control, and collaboration happens inside the Mishkat platform itself, on your own infrastructure.
+Think of it like an app store for Islamic knowledge packages — you browse what's available, pull what you need, make corrections or additions, and push your changes back. Only the changed parts are transferred, compressed with zstd for minimal storage and bandwidth.
 
-### Why Not GitHub?
+**MKS is NOT a code version control system.** There are no branches, no merge conflicts, no pull requests. It's designed for **knowledge curators** — scholars who add books, fix grading errors, update translations — not software developers.
 
-| Concern | GitHub | MVC (Self-Hosted) |
-|---------|--------|-------------------|
-| Data sovereignty | Your hadith data lives on Microsoft servers | Runs entirely on your servers |
-| Access control | GitHub roles (coarse) | Role-based: admin, scholar, researcher, viewer |
-| Islamic content sensitivity | Public platform with external moderation | Private, institution-controlled |
-| Arabic text diffing | Generic unified diff | Arabic-aware diff (RTL, Unicode normalization) |
-| Hadith-specific metadata | None | First-class: grade, collection, isnad tracking |
-| Cost at scale | Paid for large storage/LFS | Zero cost beyond your own infrastructure |
-| Integration | Webhook + token setup | Native to Mishkat API, zero config |
+### What MKS Does
+
+| Feature | Description |
+|---------|-------------|
+| **Pull** | Download hadith collections, tafsir, sharh, or any knowledge package from the server |
+| **Push** | Upload new content or corrections back to the server |
+| **Incremental Edit** | Change specific hadiths, grades, or metadata without re-uploading the whole collection |
+| **Delta Sync** | Only transfer what changed — not the entire collection (like rsync for knowledge) |
+| **Compression** | All packages compressed with zstd — 4× to 6× smaller than raw data |
+| **Snapshots** | Versioned snapshots of the entire KB — rollback to any previous state |
+| **History** | Full change log — who changed what, when, and why |
+| **Rollback** | Undo any change or restore a collection to a previous version |
+| **Multi-Instance Sync** | Sync knowledge between multiple Mishkat installations (university ↔ backup, university ↔ university) |
+| **Offline Export** | Export any collection as a compressed package for offline use |
+
+### What MKS Does NOT Do
+
+| ❌ Not Included | Why |
+|----------------|-----|
+| Branches | Knowledge doesn't need feature branches — it's not code |
+| Merge conflicts | Changes are at the hadith level, not line level — conflicts are rare and auto-resolved |
+| Pull requests / code review | Scholar approval happens through the platform's review system, not VCS |
+| File-level diffs | Knowledge is structured (hadith = unit), not free-form files |
+| CI/CD integration | This is a knowledge store, not a code repository |
+
+---
+
+### Architecture
+
+```mermaid
+flowchart TD
+    subgraph Mishkat["🕌 Mishkat Platform"]
+        KB[(Knowledge Base — Qdrant + MongoDB)]
+        SYNC[Knowledge Sync Service — Go]
+        COMPRESS[Compression Engine — zstd]
+    end
+
+    subgraph Store["🗄️ Knowledge Store — Self-Hosted"]
+        OBJ[(Object Store — MinIO / S3)]
+        META_DB[(PostgreSQL — Change Log)]
+        SNAPSHOT[(Snapshot Archive)]
+    end
+
+    subgraph Users["👥 Users"]
+        CURATOR[Knowledge Curator — push/edit]
+        CONSUMER[Researcher — pull/browse]
+        ADMIN[Admin — manage/rollback]
+    end
+
+    CURATOR -->|push changes| SYNC
+    CONSUMER -->|pull collections| SYNC
+    ADMIN -->|rollback/manage| SYNC
+    SYNC --> COMPRESS --> OBJ
+    SYNC --> META_DB
+    SYNC --> SNAPSHOT
+    SYNC --> KB
+```
+
+---
+
+### Knowledge Packages
+
+The unit of work in MKS is a **Knowledge Package** — a compressed bundle containing a collection's data, metadata, and vectors:
+
+```
+📦 bukhari.mks (Knowledge Package)
+├── manifest.json              # Collection info: name, version, hadith count, checksum
+├── hadiths/
+│   ├── 01-الإيمان.jsonl.zst   # Hadiths per book, compressed
+│   ├── 02-العلم.jsonl.zst
+│   └── ...
+├── vectors/
+│   ├── 01-الإيمان.npy.zst     # Embedding vectors, compressed
+│   └── ...
+├── metadata/
+│   ├── narrators.jsonl.zst    # Narrator info for this collection
+│   └── grading.jsonl.zst      # Grading data
+└── changelog.json              # History of changes to this package
+```
+
+**Available Knowledge Packages:**
+
+| Package | Type | Contents | Compressed Size |
+|---------|------|----------|----------------|
+| `bukhari.mks` | Hadith Collection | 7,563 hadiths + vectors + metadata | ~6 MB |
+| `muslim.mks` | Hadith Collection | 7,563 hadiths | ~5.5 MB |
+| `abu_dawud.mks` | Hadith Collection | 5,274 hadiths | ~4.2 MB |
+| `tirmidhi.mks` | Hadith Collection | 3,956 hadiths | ~3.8 MB |
+| `nasai.mks` | Hadith Collection | 5,761 hadiths | ~4.5 MB |
+| `ibn_majah.mks` | Hadith Collection | 4,341 hadiths | ~3.5 MB |
+| `tafsir_ibn_kathir.mks` | Tafsir | Full tafsir | ~18 MB |
+| `tafsir_tabari.mks` | Tafsir | Full tafsir | ~25 MB |
+| `fath_al_bari.mks` | Sharh | Commentary on Bukhari | ~22 MB |
+| `riyadh_al_salihin.mks` | Compiled | 1,896 hadiths | ~2.1 MB |
+| `narrator_database.mks` | Rijal | 12,000+ narrator profiles | ~8 MB |
+
+---
+
+### `msk sync` Commands
+
+#### Pull — Download Knowledge
+
+```bash
+# Browse available packages
+msk sync list                                    # List all available packages on server
+msk sync list --type hadith                     # Filter by type (hadith, tafsir, sharh, rijal)
+msk sync info bukhari                           # Show package details (size, version, hadith count)
+
+# Pull a collection
+msk sync pull bukhari                           # Download Sahih al-Bukhari
+msk sync pull bukhari muslim tirmidhi           # Pull multiple at once
+msk sync pull --all                             # Pull everything available
+msk sync pull tafsir_ibn_kathir                 # Pull a tafsir
+
+# Pull with options
+msk sync pull bukhari --offline                 # Download for offline use (includes vectors)
+msk sync pull bukhari --text-only               # Text + metadata only (no vectors, smaller)
+msk sync pull bukhari --lang ar,en              # Only Arabic + English translations
+```
+
+#### Push — Upload New or Updated Knowledge
+
+```bash
+# Push a new collection
+msk sync push ./nasai_data/ --name nasai --type hadith --message "Sunan al-Nasa'i — 5,761 hadiths"
+
+# Push from a structured JSON file
+msk sync push ./tirmidhi.json --name tirmidhi --type hadith
+
+# Push a tafsir
+msk sync push ./tafsir_tabari/ --name tafsir_tabari --type tafsir --message "Tafsir al-Tabari — full"
+
+# Dry run (validate without uploading)
+msk sync push ./data/ --name test --dry-run --verbose
+```
+
+#### Edit — Incremental Changes (No Full Re-Upload)
+
+This is the key feature — **edit specific hadiths without re-uploading the whole collection:**
+
+```bash
+# Fix a grading error on a specific hadith
+msk sync edit bukhari --hadith 1906 --field grade --value "صحيح" --message "Fix grading per Ibn Hajar"
+
+# Update a narrator's reliability rating
+msk sync edit narrator_database --narrator "حفص بن سليمان" --field grade --value "متروك"
+
+# Add a missing translation
+msk sync edit bukhari --hadith 1 --field translation_en --value "Actions are by intentions..." --message "Add English translation"
+
+# Edit multiple hadiths from a patch file
+msk sync edit bukhari --patch ./corrections.jsonl --message "Batch corrections from Dr. Yusuf"
+
+# Edit metadata (author, description, etc.)
+msk sync edit bukhari --metadata --field description --value "Updated description"
+```
+
+**How Incremental Edit Works:**
+```
+1. User runs: msk sync edit bukhari --hadith 1906 --field grade --value "صحيح"
+2. MKS creates a DELTA record:
+   {
+     "collection": "bukhari",
+     "hadith": 1906,
+     "field": "grade",
+     "old_value": "حسن",
+     "new_value": "صحيح",
+     "author": "dr-yusuf",
+     "message": "Fix grading per Ibn Hajar",
+     "timestamp": "2026-05-14T10:00:00Z"
+   }
+3. Delta is pushed to the server (few bytes, not the whole collection)
+4. Server applies delta to the live collection
+5. Other users who pull bukhari next time get the updated version
+6. If someone already has bukhari locally, `msk sync update` applies only the deltas
+```
+
+#### Update — Get Latest Changes
+
+```bash
+# Update all local packages to latest version
+msk sync update                                 # Downloads only deltas, not full packages
+
+# Update a specific collection
+msk sync update bukhari                         # Get latest changes for Bukhari
+
+# Check what changed
+msk sync changes bukhari                        # Show list of changes since your last pull
+msk sync changes --since 2026-05-01            # Changes since a date
+```
+
+#### Snapshots & Rollback
+
+```bash
+# Create a snapshot of the current KB state
+msk sync snapshot create --message "Before adding Nasa'i"
+
+# List snapshots
+msk sync snapshot list
+# Output:
+# ID          Date              Size     Message
+# snap_001    2026-05-01        560 MB   Initial Kutub al-Sittah
+# snap_002    2026-05-10        580 MB   Before adding Nasa'i
+# snap_003    2026-05-14        610 MB   After grading corrections
+
+# Rollback to a previous snapshot
+msk sync rollback snap_002 --confirm
+
+# Rollback a single collection to a previous state
+msk sync rollback snap_001 --collection bukhari
+
+# Export a snapshot as a downloadable archive
+msk sync snapshot export snap_003 --out ./mishkat-backup-20260514.mks.zst
+```
+
+#### History — Change Log
+
+```bash
+# View change log for a collection
+msk sync log bukhari
+# Output:
+# 2026-05-14 10:00  dr-yusuf     edit    hadith:1906 grade "حسن" → "صحيح"
+# 2026-05-13 14:22  admin        push    Added 342 hadiths from Shamela export
+# 2026-05-10 09:15  dr-fatima    edit    hadith:42 translation_en updated
+# 2026-05-01 00:00  admin        push    Initial import — 7,563 hadiths
+
+# View log for all collections
+msk sync log --all --limit 50
+
+# View a specific change
+msk sync log bukhari --change chg_abc123
+```
+
+---
+
+### Compression & Storage
+
+MKS uses layered zstd compression for minimal storage and fast transfers:
+
+| Data Type | Raw Size | Compressed | Ratio |
+|-----------|----------|-----------|-------|
+| Hadith text (Arabic JSONL) | 22 MB | 3.7 MB | 6:1 |
+| Embedding vectors (float32) | 58 MB | 26 MB | 2.2:1 |
+| Narrator metadata | 8 MB | 1.6 MB | 5:1 |
+| Full Kutub al-Sittah + metadata + vectors | ~2.1 GB | ~560 MB | 3.8:1 |
+
+**Delta transfers** make updates even smaller:
+- Editing one hadith's grade = ~200 bytes transferred
+- Adding 100 new hadiths = ~50 KB transferred (vs re-downloading 6 MB)
+- Typical daily sync = under 1 MB
+
+---
+
+### Multi-Instance Sync
+
+Sync knowledge between multiple Mishkat installations:
+
+```bash
+# Register another Mishkat instance
+msk sync remote add backup https://mishkat-backup.youruni.edu
+
+# Push all knowledge to the backup
+msk sync push --remote backup --all
+
+# Pull from another university's Mishkat
+msk sync remote add madinah https://mishkat.iu-madinah.edu
+msk sync pull --remote madinah tafsir_ibn_kathir
+
+# Auto-sync (runs as a background service)
+msk sync auto --interval 6h --remote backup
+```
+
+---
+
+### MKS Web UI
+
+Accessible at `mishkat.app/sync` — a simple dashboard for managing knowledge packages:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  📦 Knowledge Sync                                [Sync Now]     │
+├──────────────────────────────────────────────────────────────────┤
+│  PACKAGES                        │  DETAILS                      │
+│                                  │                               │
+│  ☑ صحيح البخاري     v3.2  6MB   │  Package: صحيح البخاري        │
+│  ☑ صحيح مسلم        v2.1  5MB   │  Version: 3.2                 │
+│  ☐ سنن أبي داود     v1.0  4MB   │  Hadiths: 7,563               │
+│  ☐ جامع الترمذي     v1.0  4MB   │  Last Updated: May 14, 2026   │
+│  ☐ تفسير ابن كثير   v1.5  18MB  │  Size: 6.1 MB (compressed)    │
+│                                  │  Changes since your version:  │
+│  [Pull Selected] [Push New]      │    • 3 grading corrections    │
+│                                  │    • 12 translations added    │
+│  RECENT CHANGES                  │                               │
+│  dr-yusuf — fixed grade #1906   │  [Update] [View Changes]      │
+│  admin — added Nasa'i            │                               │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### MKS Service Architecture
+
+```
+sync-service/                              # Go
+├── cmd/main.go
+├── internal/
+│   ├── core/
+│   │   ├── package.go                    # Knowledge package model
+│   │   ├── delta.go                      # Incremental change model
+│   │   ├── snapshot.go                   # Full KB snapshot model
+│   │   └── changelog.go                  # Change log / history
+│   ├── storage/
+│   │   ├── object_store.go              # MinIO / S3 — stores .mks packages
+│   │   ├── meta_repo.go                 # PostgreSQL — change log, package registry
+│   │   └── delta_store.go               # Stores incremental deltas
+│   ├── compress/
+│   │   ├── jsonl_zstd.go               # JSONL + zstd compression
+│   │   ├── numpy_zstd.go               # Vector compression
+│   │   └── package_builder.go           # Builds .mks packages
+│   ├── sync/
+│   │   ├── pull_service.go              # Handle pull requests from clients
+│   │   ├── push_service.go              # Handle push from curators
+│   │   ├── delta_sync.go                # Apply incremental edits
+│   │   ├── remote_sync.go               # Sync between Mishkat instances
+│   │   └── auto_sync.go                 # Background auto-sync daemon
+│   ├── validation/
+│   │   ├── schema_validator.go          # Validate pushed data against schema
+│   │   ├── arabic_validator.go          # Check Arabic text integrity
+│   │   └── vector_validator.go          # Verify vector dimensions match model
+│   └── api/
+│       ├── package_api.go               # List, info, pull, push endpoints
+│       ├── edit_api.go                  # Incremental edit endpoints
+│       ├── snapshot_api.go              # Snapshot create/restore/export
+│       └── changelog_api.go             # Change history endpoints
+├── go.mod
+└── Dockerfile
+```
+
+---
+
+## 3. Advanced Agent Extensions
 
 ---
 
@@ -1569,6 +1901,895 @@ User: @dr-yusuf هل يمكنك مراجعة هذا التخريج؟
 @dr-fatima أرجو مراجعة القسم الثالث
 @topic:fiqh @topic:zakat
 هذا البحث يكمل ما بدأه @doc:research_sadaqah
+```
+
+---
+
+## 8. Slash Command System (`/`)
+
+### Overview
+
+The `/` slash command system is the **action counterpart** to the `@` mention system. While `@` references entities (agents, people, collections), `/` **triggers actions** — search, format, export, insert, create, configure. Type `/` anywhere in the chat, research studio, or Hub editor and an autocomplete menu appears with all available commands.
+
+This is modeled after Discord, Notion, and Slack slash commands — but purpose-built for Islamic knowledge workflows.
+
+### Design Principles
+
+- **Instant autocomplete** — typing `/` opens a fuzzy-searchable command palette
+- **Context-aware** — available commands change based on where you are (chat, Hub, admin)
+- **Composable** — chain with `@` mentions: `/search @bukhari الصيام`
+- **Role-gated** — admin commands hidden for students, scholar tools hidden for guests
+- **Keyboard-first** — power users never leave the keyboard
+
+### Command Categories
+
+---
+
+#### 🔍 `/search` — Quick Search Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/search` | Quick semantic search across all collections | `/search أحاديث الصبر` |
+| `/search:exact` | Exact keyword match (no semantic) | `/search:exact إنما الأعمال بالنيات` |
+| `/search:hadith` | Search by hadith number | `/search:hadith bukhari:1906` |
+| `/search:narrator` | Find hadiths by narrator | `/search:narrator أبو هريرة` |
+| `/search:topic` | Browse by Islamic topic tag | `/search:topic الصيام` |
+| `/search:quran` | Search Quranic verses | `/search:quran البقرة:183` |
+| `/search:tafsir` | Look up tafsir for a verse | `/search:tafsir البقرة:255 ابن كثير` |
+| `/search:fatwa` | Search scholarly opinions | `/search:fatwa حكم التأمين` |
+| `/search:similar` | Find hadiths similar to the current one | `/search:similar` (uses current context) |
+| `/search:web` | Web search (restricted to Islamic sources) | `/search:web ruling on cryptocurrency` |
+
+---
+
+#### 🤖 `/agent` — Run Agents Inline
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/agent:research` | Deep multi-source research | `/agent:research أحاديث الزكاة` |
+| `/agent:verify` | Verify a hadith's authenticity | `/agent:verify طلب العلم فريضة` |
+| `/agent:compare` | Compare madhab positions | `/agent:compare حكم المسح على الخفين` |
+| `/agent:translate` | Translate current context | `/agent:translate en` |
+| `/agent:summarize` | Summarize a topic or conversation | `/agent:summarize` |
+| `/agent:tutor` | Enter tutor mode for learning | `/agent:tutor الصيام --level beginner` |
+| `/agent:debate` | Start a munazara on a disputed topic | `/agent:debate قراءة الفاتحة خلف الإمام` |
+| `/agent:chain` | Run multiple agents in sequence | `/agent:chain research,verify,translate` |
+
+---
+
+#### 📝 `/insert` — Insert Content Inline
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/insert:hadith` | Insert a hadith card with full attribution | `/insert:hadith bukhari:1` |
+| `/insert:ayah` | Insert a Quranic verse with translation | `/insert:ayah البقرة:255` |
+| `/insert:tafsir` | Insert tafsir excerpt | `/insert:tafsir البقرة:255 ابن كثير` |
+| `/insert:table` | Insert a comparison table | `/insert:table madhab الصيام` |
+| `/insert:isnad` | Insert an isnad chain diagram | `/insert:isnad bukhari:1906` |
+| `/insert:timeline` | Insert a topic timeline | `/insert:timeline أحكام الصيام` |
+| `/insert:citation` | Insert a formatted citation | `/insert:citation bukhari:1 chicago` |
+| `/insert:divider` | Insert a visual separator | `/insert:divider` |
+| `/insert:callout` | Insert a highlighted note/warning | `/insert:callout warning` |
+
+---
+
+#### 📤 `/export` — Export & Share
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/export:pdf` | Export current conversation/research as PDF | `/export:pdf` |
+| `/export:markdown` | Export as Markdown | `/export:markdown` |
+| `/export:latex` | Export as LaTeX (academic papers) | `/export:latex` |
+| `/export:bibtex` | Export citations as BibTeX | `/export:bibtex` |
+| `/export:word` | Export as Word document | `/export:word` |
+| `/export:json` | Export raw data as JSON | `/export:json` |
+| `/export:card` | Generate a shareable image card | `/export:card` |
+| `/export:calligraphy` | Generate calligraphy image of hadith | `/export:calligraphy thuluth` |
+| `/share` | Generate a share link | `/share public` |
+| `/share:embed` | Generate an embed code for websites | `/share:embed widget` |
+
+---
+
+#### ⚙️ `/set` — Quick Settings & Preferences
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/set:lang` | Change response language | `/set:lang en` |
+| `/set:sources` | Set active hadith collections | `/set:sources bukhari,muslim,tirmidhi` |
+| `/set:madhab` | Set preferred madhab filter | `/set:madhab shafi` |
+| `/set:grade` | Set minimum hadith grade filter | `/set:grade sahih` |
+| `/set:agent` | Set default agent | `/set:agent research` |
+| `/set:theme` | Toggle light/dark mode | `/set:theme dark` |
+| `/set:diacritics` | Toggle Arabic diacritics display | `/set:diacritics on` |
+| `/set:translation` | Toggle parallel translation | `/set:translation en` |
+
+---
+
+#### 🛠️ `/tool` — Direct Tool Access
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/tool:clean` | Clean/normalize Arabic text | `/tool:clean [paste text]` |
+| `/tool:diacritize` | Add tashkeel to undiacritized text | `/tool:diacritize محمد` |
+| `/tool:transliterate` | Romanize Arabic text | `/tool:transliterate إنما الأعمال` |
+| `/tool:embed` | Generate embedding vector for text | `/tool:embed [text]` |
+| `/tool:classify` | Classify text by Islamic topic | `/tool:classify [text]` |
+| `/tool:grade` | Quick-grade a hadith | `/tool:grade [hadith text]` |
+| `/tool:parse` | Parse a PDF/document | `/tool:parse [upload file]` |
+
+---
+
+#### 🔧 `/skill` — Run Skills Inline
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/skill:run` | Execute a skill from the registry | `/skill:run hadith-formatter --style academic` |
+| `/skill:list` | Show available skills | `/skill:list` |
+| `/skill:chain` | Chain multiple skills | `/skill:chain topic-extractor,research-compiler` |
+
+---
+
+#### 📚 `/library` — Research Library
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/library:save` | Save current conversation as research | `/library:save أبحاث الصيام` |
+| `/library:open` | Open a saved research document | `/library:open research_zakat` |
+| `/library:list` | List all saved research | `/library:list` |
+| `/library:bookmark` | Bookmark current hadith/result | `/library:bookmark` |
+| `/library:tag` | Tag current content | `/library:tag fiqh,zakat` |
+
+---
+
+#### 🔄 `/automation` — Trigger Automations
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/auto:run` | Trigger an automation pipeline | `/auto:run weekly-digest` |
+| `/auto:schedule` | Quick-schedule a task | `/auto:schedule friday "hadith jumu'ah"` |
+| `/auto:list` | List active automations | `/auto:list` |
+
+---
+
+#### 🔑 `/admin` — Admin Commands (admin role only)
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/admin:ingest` | Start data ingestion | `/admin:ingest ./data/tirmidhi.json` |
+| `/admin:stats` | Show system statistics | `/admin:stats` |
+| `/admin:cache:flush` | Flush response cache | `/admin:cache:flush` |
+| `/admin:users` | List/manage users | `/admin:users list` |
+| `/admin:health` | System health check | `/admin:health` |
+| `/admin:reindex` | Rebuild search index | `/admin:reindex bukhari` |
+
+---
+
+### Autocomplete UI
+
+When a user types `/`, an autocomplete popup appears:
+
+```
+┌──────────────────────────────────────────────┐
+│  /                                            │
+│  ─────────────────────────────────────────── │
+│  🔍 SEARCH                                    │
+│    /search          Search knowledge base     │
+│    /search:hadith   Search by hadith number   │
+│    /search:narrator Find by narrator          │
+│  🤖 AGENTS                                    │
+│    /agent:research  Deep research             │
+│    /agent:verify    Verify authenticity        │
+│    /agent:compare   Compare madhabs           │
+│  📝 INSERT                                    │
+│    /insert:hadith   Insert hadith card        │
+│    /insert:ayah     Insert Quranic verse      │
+│  📤 EXPORT                                    │
+│    /export:pdf      Export as PDF             │
+│    /export:card     Generate share card       │
+│  ⚙️ SETTINGS                                  │
+│    /set:lang        Change language           │
+│    /set:sources     Set active collections    │
+│                                               │
+│  Type to filter... ↑↓ navigate  ⏎ select     │
+└──────────────────────────────────────────────┘
+```
+
+### Fuzzy Matching
+
+The autocomplete supports fuzzy search — typing `/ver` matches:
+- `/agent:verify`
+- `/search:narrator` (contains "nar" — close to "ver" in context)
+- `/tool:diacritize` (verify-related)
+
+Typing `/ص` (Arabic) matches:
+- `/search:topic الصيام`
+- `/insert:hadith` (recently used with صيام)
+
+### Composing `/` with `@`
+
+Slash commands and mentions work together naturally:
+
+```
+/search @bukhari @muslim الصيام
+→ Searches only Bukhari and Muslim for fasting hadiths
+
+/agent:verify @bukhari:1906
+→ Runs verification on Bukhari hadith 1906
+
+/export:pdf @doc:research_zakat
+→ Exports the zakat research document as PDF
+
+/insert:table @hanafi @shafi @maliki المسح على الخفين
+→ Inserts a 3-madhab comparison table
+
+/agent:chain research,verify,translate @tirmidhi أحكام الصدقة
+→ Chains 3 agents, restricted to Tirmidhi collection
+```
+
+### In Different Contexts
+
+**In Chat:**
+```
+User: /search الصبر
+→ Quick results appear inline, user can click to explore
+
+User: /agent:verify إنما الأعمال بالنيات
+→ Verification agent runs and returns grading report
+
+User: /export:card
+→ Last response exported as a shareable image card
+```
+
+**In Research Studio (Hub):**
+```
+Typing in the editor:
+
+/insert:hadith bukhari:6018
+→ A formatted hadith card is inserted at cursor position
+
+/insert:table madhab زكاة الفطر
+→ A 4-madhab comparison table is inserted
+
+/export:latex
+→ The entire research document is exported as LaTeX
+```
+
+**In CLI:**
+```bash
+# The CLI equivalent — slash commands map to msk subcommands
+msk query "الصيام"                    # = /search الصيام
+msk agent run verify "hadith text"    # = /agent:verify
+msk knowledge export --format pdf     # = /export:pdf
+msk admin health                      # = /admin:health
+```
+
+### Permission Matrix
+
+| Command Group | 👤 Guest | 🎓 Student | 📚 Scholar | 🔑 Admin |
+|--------------|----------|-----------|-----------|---------|
+| `/search` | ✅ (basic) | ✅ (full) | ✅ (full) | ✅ |
+| `/agent` | ❌ | ✅ (limited) | ✅ (all) | ✅ |
+| `/insert` | ❌ | ✅ | ✅ | ✅ |
+| `/export` | ❌ | ✅ (md only) | ✅ (all) | ✅ |
+| `/set` | ✅ (theme) | ✅ | ✅ | ✅ |
+| `/tool` | ❌ | ✅ (clean, translate) | ✅ (all) | ✅ |
+| `/skill` | ❌ | ✅ | ✅ | ✅ |
+| `/library` | ❌ | ✅ | ✅ | ✅ |
+| `/auto` | ❌ | ❌ | ✅ | ✅ |
+| `/admin` | ❌ | ❌ | ❌ | ✅ |
+
+### Frontend Implementation
+
+```typescript
+// SlashCommandParser.ts — detects and processes / commands
+interface SlashCommand {
+  category: string;          // "search" | "agent" | "insert" | "export" | ...
+  action: string;            // "hadith" | "verify" | "pdf" | ...
+  args: string;              // remaining text after command
+  mentions: MentionRef[];    // parsed @ mentions in the args
+  role: UserRole;            // current user's role for permission check
+}
+
+function parseSlashCommand(input: string): SlashCommand | null {
+  const match = input.match(/^\/(\w+)(?::(\w+))?\s*(.*)/);
+  if (!match) return null;
+  
+  return {
+    category: match[1],
+    action: match[2] || 'default',
+    args: match[3],
+    mentions: parseMentions(match[3]),
+    role: getCurrentUserRole()
+  };
+}
+
+// SlashCommandRegistry.ts — registers all available commands
+class SlashCommandRegistry {
+  private commands: Map<string, SlashCommandHandler> = new Map();
+  
+  register(pattern: string, handler: SlashCommandHandler, requiredRole: UserRole) { ... }
+  
+  execute(command: SlashCommand): Promise<CommandResult> {
+    const handler = this.commands.get(`${command.category}:${command.action}`);
+    if (!handler) throw new UnknownCommandError(command);
+    if (!hasPermission(command.role, handler.requiredRole)) throw new PermissionError();
+    return handler.execute(command.args, command.mentions);
+  }
+  
+  getSuggestions(partial: string, role: UserRole): SlashCommandSuggestion[] {
+    // Fuzzy match + filter by role
+  }
+}
+```
+
+### Keyboard Shortcuts (Power Users)
+
+In addition to `/` commands, power users get keyboard shortcuts:
+
+| Shortcut | Action | Equivalent |
+|----------|--------|-----------|
+| `Ctrl+K` | Open command palette (like VS Code) | Shows all `/` commands |
+| `Ctrl+Shift+S` | Quick search | `/search` |
+| `Ctrl+Shift+V` | Quick verify | `/agent:verify` |
+| `Ctrl+Shift+E` | Quick export | `/export:pdf` |
+| `Ctrl+B` | Bookmark current | `/library:bookmark` |
+| `Ctrl+Shift+T` | Toggle translation | `/set:translation toggle` |
+
+---
+
+## 9. Powerful Platform Features
+
+### 9.1 Multi-Modal Input System (Image · Audio · Document · URL)
+
+**Problem:** Users currently can only type text. But scholars photograph manuscript pages, students record lectures, researchers paste URLs — none of these work today.
+
+**Solution:** Accept **any input type** and intelligently route it through the right processing pipeline.
+
+**Supported Inputs:**
+
+| Input Type | How It Works | Example |
+|-----------|-------------|---------|
+| 📷 **Image** | OCR + Arabic HTR → extract text → route to agents | Photo of a hadith page from a book |
+| 🎤 **Audio** | Whisper ASR → transcribe → route to agents | Voice recording of a sheikh quoting a hadith |
+| 📄 **Document** | Parse (PDF/DOCX/EPUB) → chunk → route or ingest | Upload a research paper for fact-checking |
+| 🔗 **URL** | Scrape → clean → extract Islamic content → route | Paste an islamqa.info link for verification |
+| 📋 **Clipboard Paste** | Detect type (text/image/file) → auto-route | Paste Arabic text from any source |
+| 📹 **Video** | Extract audio → ASR → extract frames for OCR | Lecture video with on-screen Arabic text |
+
+**Architecture:**
+```mermaid
+flowchart TD
+    INPUT[User Input] --> DETECT{Input Type Detector}
+    DETECT -->|Image| OCR[Arabic OCR — Tesseract + TrOCR]
+    DETECT -->|Audio| ASR[Whisper v3 — Arabic ASR]
+    DETECT -->|Document| PARSER[Document Parser — PDF/DOCX/EPUB]
+    DETECT -->|URL| SCRAPER[Web Scraper + HTML Cleaner]
+    DETECT -->|Video| SPLIT[Split: Audio → ASR + Frames → OCR]
+    DETECT -->|Text| PASS[Pass Through]
+    
+    OCR & ASR & PARSER & SCRAPER & SPLIT & PASS --> NORMALIZE[Arabic Text Normalizer]
+    NORMALIZE --> CLASSIFY[Intent Classifier]
+    CLASSIFY --> SUPERVISOR[Supervisor Agent — Normal Routing]
+```
+
+**UI — Drag & Drop Zone:**
+```
+┌──────────────────────────────────────────────┐
+│  💬 Ask Mishkat...                            │
+│                                               │
+│  ┌────────────────────────────────────────┐  │
+│  │  📎 Drop image, audio, PDF, or URL     │  │
+│  │     or paste from clipboard            │  │
+│  │                                        │  │
+│  │  Supported: JPG, PNG, PDF, DOCX, MP3,  │  │
+│  │  WAV, MP4, EPUB, URLs                  │  │
+│  └────────────────────────────────────────┘  │
+│                                               │
+│  [📷 Photo] [🎤 Record] [📄 Upload] [🔗 URL] │
+└──────────────────────────────────────────────┘
+```
+
+**Use Cases:**
+- Student photographs a page from فتح الباري → Mishkat OCRs it, identifies the hadith, provides full takhrij
+- Scholar records a voice note in Arabic → Mishkat transcribes, searches for the referenced hadith, verifies it
+- Researcher pastes a fatwa URL → Mishkat scrapes, cross-references with hadith DB, highlights unsourced claims
+
+---
+
+### 9.2 Real-Time Collaborative Annotation System
+
+**Problem:** Scholars and students need to annotate hadiths together — add comments, highlight key phrases, link to evidence, tag topics — like Google Docs but for hadith study.
+
+**Solution:** A real-time annotation layer on top of every hadith, research document, and query result.
+
+**Features:**
+- **Inline Annotations** — highlight any Arabic text and add a comment
+- **Typed Annotations** — categorize: تعليق (comment), تصحيح (correction), سؤال (question), إضافة (addition)
+- **Threading** — reply to annotations, creating focused discussions
+- **Real-Time Sync** — Yjs CRDT-based, multiple scholars can annotate simultaneously
+- **Annotation Layers** — toggle visibility: show only my annotations, show scholarly consensus, show student questions
+- **AI-Assisted** — Mishkat suggests annotations based on known scholarly commentary
+
+**Annotation Data Model:**
+```json
+{
+  "annotation_id": "ann_abc123",
+  "target": {
+    "type": "hadith",
+    "ref": "bukhari:1906",
+    "text_range": {"start": 45, "end": 82},
+    "highlighted_text": "صُومُوا لِرُؤْيَتِهِ"
+  },
+  "author": "dr-yusuf",
+  "type": "تعليق",
+  "content": "هذا الحديث أصل في باب الصيام، وقد اختلف العلماء في المراد بالرؤية",
+  "replies": [...],
+  "visibility": "public",
+  "created_at": "2026-05-14T10:00:00Z",
+  "resolved": false
+}
+```
+
+**UI:**
+```
+┌──────────────────────────────────────────────────────┐
+│  📖 صحيح البخاري — كتاب الصيام — حديث ١٩٠٦          │
+│                                                       │
+│  عن أبي هريرة رضي الله عنه قال: قال رسول الله ﷺ:    │
+│  「صُومُوا لِرُؤْيَتِهِ وَأَفْطِرُوا لِرُؤْيَتِهِ」 ◄── 💬 3 │
+│  فإن غُبِّيَ عليكم فأكملوا عدة شعبان ثلاثين يوماً   │
+│                                                       │
+│  ──── Annotations (3) ────                            │
+│  👤 dr-yusuf [تعليق]: المراد بالرؤية...              │
+│    ↳ 👤 sheikh-omar: نعم، وقد رجح ابن حجر...         │
+│  👤 student-ali [سؤال]: ما حكم الاعتماد على الحساب؟   │
+│    ↳ 🤖 AI: هذه مسألة خلافية، راجع...                │
+│                                                       │
+│  [+ Add Annotation]  Layer: [All ▼]                   │
+└──────────────────────────────────────────────────────┘
+```
+
+---
+
+### 9.3 Islamic Calendar Intelligence Engine
+
+**Problem:** Islamic content is deeply tied to the Hijri calendar — Ramadan hadiths in Ramadan, Hajj content in Dhul Hijjah, Friday hadiths on Jumu'ah — but the platform has zero calendar awareness.
+
+**Solution:** A calendar-aware engine that automatically surfaces relevant content based on the current Islamic date and time.
+
+**Features:**
+
+| Feature | Description |
+|---------|-------------|
+| **Contextual Content** | Auto-surfaces hadiths relevant to today's date (Ramadan → fasting hadiths) |
+| **Prayer Time Integration** | Shows prayer times + relevant adhkar for each prayer |
+| **Islamic Event Alerts** | Reminds about Laylat al-Qadr, Arafah, Ashura, etc. |
+| **Seasonal Curriculum** | Tutor Agent adjusts lessons to match calendar (fiqh of Hajj during Dhul Hijjah) |
+| **Countdown Widgets** | Days until Ramadan, days of Dhul Hijjah, etc. |
+| **Historical Today** | "On this day in Islamic history..." |
+| **Moon Phase** | Current Hijri month + moon phase visualization |
+
+**Calendar API:**
+```json
+// GET /api/v1/calendar/context
+{
+  "hijri_date": "15 Dhul-Qa'dah 1447",
+  "gregorian_date": "2026-05-15",
+  "day_of_week": "Friday",
+  "is_special_day": true,
+  "special_day": "يوم الجمعة",
+  "relevant_topics": ["الجمعة", "الدعاء يوم الجمعة", "سورة الكهف"],
+  "relevant_hadiths": ["bukhari:876", "muslim:852", "abu_dawud:1047"],
+  "prayer_times": {
+    "location": "Riyadh",
+    "fajr": "04:12", "dhuhr": "11:48", "asr": "15:15",
+    "maghrib": "18:35", "isha": "20:05"
+  },
+  "upcoming_events": [
+    {"event": "أول ذي الحجة", "days_until": 16, "relevant_topic": "الحج"}
+  ],
+  "historical_today": "في مثل هذا اليوم سنة 11 هـ — وفاة أبو بكر الصديق رضي الله عنه"
+}
+```
+
+**Smart Prompt Injection:**
+When a user asks a general question during Ramadan, the system prompt includes:
+```
+Current context: We are in Ramadan (day 15). If the user's question relates to
+fasting, prioritize Ramadan-specific rulings. Surface relevant seasonal content.
+```
+
+---
+
+### 9.4 Organization & Multi-Tenant Management
+
+**Problem:** The platform is built for a single university. But multiple universities, mosques, Islamic schools, and research centers will want their own isolated instances with shared infrastructure.
+
+**Solution:** Multi-tenant architecture with organization-level isolation.
+
+**Tenant Hierarchy:**
+```
+Mishkat Platform (Global)
+├── Organization: جامعة الأزهر
+│   ├── Teams: قسم الحديث, قسم الفقه, قسم التفسير
+│   ├── Users: scholars, students, admins
+│   ├── Private Knowledge Base (org-specific collections)
+│   ├── Shared Knowledge Base (global Kutub al-Sittah)
+│   └── Custom Branding: logo, colors, domain (azhar.mishkat.app)
+│
+├── Organization: Islamic University of Madinah
+│   ├── Teams: Hadith Dept, Fiqh Dept
+│   ├── Users: ...
+│   ├── Private KB: Madinah-specific manuscript collection
+│   └── Custom Domain: madinah.mishkat.app
+│
+└── Individual Researchers (no org)
+    └── Personal workspace + global KB access
+```
+
+**Features:**
+
+| Feature | Description |
+|---------|-------------|
+| **Org Dashboard** | Admin panel per organization — user management, usage analytics, billing |
+| **Data Isolation** | Each org's private data is strictly isolated (separate Qdrant collections, MongoDB databases) |
+| **Shared Global KB** | All orgs share the global Kutub al-Sittah — no duplication |
+| **Custom Branding** | Logo, colors, custom domain (CNAME) |
+| **SSO Integration** | Connect to org's existing LDAP/SAML/Shibboleth for university SSO |
+| **Usage Quotas** | Per-org query limits, storage limits, user limits |
+| **Inter-Org Sharing** | Share research between orgs (with permission) via Mishkat-Hub |
+| **Billing** | Per-org billing: free tier (50 users), academic ($X/mo), enterprise (custom) |
+
+**New Service:**
+```
+org-service/                         # Go
+├── internal/
+│   ├── handlers/
+│   │   ├── org_handler.go          # CRUD for organizations
+│   │   ├── team_handler.go         # Teams within org
+│   │   ├── billing_handler.go      # Usage tracking + billing
+│   │   └── branding_handler.go     # Custom branding config
+│   ├── services/
+│   │   ├── tenant_resolver.go      # Resolve org from domain/subdomain
+│   │   ├── data_isolation.go       # Route queries to org-specific DBs
+│   │   ├── sso_service.go          # SAML/LDAP integration
+│   │   └── quota_service.go        # Enforce usage limits
+│   └── models/
+│       ├── organization.go
+│       ├── team.go
+│       └── billing_plan.go
+```
+
+---
+
+### 9.5 Embeddable Widgets & Public API
+
+**Problem:** Islamic websites, blogs, and apps want to embed Mishkat functionality — hadith of the day, search boxes, verification badges — but there's no way to do this.
+
+**Solution:** A widget SDK and a public API with developer portal.
+
+**Widgets Available:**
+
+| Widget | Embed Code | What It Does |
+|--------|-----------|-------------|
+| **Hadith of the Day** | `<mishkat-daily-hadith/>` | Auto-updating hadith card with translation |
+| **Search Box** | `<mishkat-search/>` | Embedded semantic search |
+| **Hadith Card** | `<mishkat-hadith ref="bukhari:1"/>` | Static hadith display with full attribution |
+| **Verification Badge** | `<mishkat-verified ref="bukhari:1"/>` | Shows ✅ Sahih / ⚠️ Da'if badge |
+| **Mini Chat** | `<mishkat-chat/>` | Embedded chat widget (like Intercom but for hadiths) |
+| **Topic Explorer** | `<mishkat-topics/>` | Browse Islamic topics with linked hadiths |
+
+**Widget SDK:**
+```html
+<!-- Add to any website -->
+<script src="https://cdn.mishkat.app/widget.js"></script>
+
+<!-- Hadith of the Day Widget -->
+<mishkat-daily-hadith 
+  lang="ar,en" 
+  theme="dark" 
+  show-source="true"
+  api-key="pk_live_xxxx">
+</mishkat-daily-hadith>
+
+<!-- Search Widget -->
+<mishkat-search 
+  placeholder="ابحث في الأحاديث..."
+  collections="bukhari,muslim"
+  max-results="5"
+  api-key="pk_live_xxxx">
+</mishkat-search>
+
+<!-- Verification Badge (inline) -->
+This hadith is <mishkat-verified ref="bukhari:1" inline="true"/>.
+```
+
+**Public REST API:**
+```
+Base URL: https://api.mishkat.app/v1/
+
+Authentication: API Key (header: X-Mishkat-Key)
+
+Endpoints:
+GET  /hadiths/:collection/:number        — Get a specific hadith
+GET  /hadiths/search?q=...&lang=ar       — Semantic search
+GET  /hadiths/random?collection=bukhari   — Random hadith
+GET  /hadiths/daily                       — Hadith of the day
+POST /hadiths/verify                      — Verify a hadith text
+GET  /narrators/:name                     — Narrator profile
+GET  /quran/:surah/:ayah                  — Quranic verse
+GET  /calendar/today                      — Islamic calendar context
+GET  /prayer-times?city=...               — Prayer times
+
+Rate Limits:
+  Free:     100 requests/day
+  Basic:    10,000 requests/day ($9/mo)
+  Pro:      100,000 requests/day ($49/mo)
+  Academic: 50,000 requests/day (free for universities)
+```
+
+**Developer Portal:** `developers.mishkat.app`
+- API documentation (OpenAPI/Swagger)
+- Interactive API explorer (try requests in-browser)
+- SDK downloads (JavaScript, Python, Swift, Kotlin)
+- Widget configurator (visual builder)
+- Usage dashboard + API key management
+
+---
+
+### 9.6 AI Content Safety & Anti-Misinformation System
+
+**Problem:** Islamic knowledge is sensitive. Fabricated hadiths (أحاديث موضوعة) circulate widely online. Users may try to inject false content, and AI responses must never attribute false information to the Prophet ﷺ.
+
+**Solution:** A multi-layered content safety system specifically designed for Islamic content.
+
+**Safety Layers:**
+
+| Layer | What It Does | When |
+|-------|-------------|------|
+| **Input Guard** | Detects malicious prompts (jailbreak, prompt injection, inappropriate content) | Before processing |
+| **Fabrication Detector** | Cross-checks any hadith text against the known corpus — flags unknown texts | During RAG |
+| **Source Validator** | Ensures every claim in the response maps to a real source with real numbers | After generation |
+| **Sectarian Bias Filter** | Detects one-sided framing of disputed issues — enforces balanced presentation | After generation |
+| **Scholar Review Queue** | Low-confidence responses auto-queued for human scholar review | After generation |
+| **Community Reporting** | Users can flag responses as inaccurate — triggers re-review | Post-delivery |
+
+**Fabrication Detection Pipeline:**
+```
+User submits hadith text
+    → Normalize Arabic (strip diacritics, normalize alef)
+    → Semantic search against entire corpus (similarity > 0.90?)
+    → If NO match:
+        → Search web for the text (sunnah.com, dorar.net)
+        → If found online with grading → return grading
+        → If NOT found anywhere → flag as "لم يُعثر عليه — Not found in known sources"
+    → If match found:
+        → Return exact source + grading
+        → Cross-reference grading across multiple scholars
+```
+
+**Mawdu' (Fabricated) Hadith Database:**
+A curated database of known fabricated hadiths — used as a blocklist:
+```json
+{
+  "text": "حب الوطن من الإيمان",
+  "status": "لا أصل له",
+  "scholars_who_rejected": ["الألباني", "ابن باز", "الصغاني"],
+  "common_misattribution": "attributed to various collections but has no isnad",
+  "correct_understanding": "The concept of loving one's homeland is valid, but this specific text is not a hadith"
+}
+```
+
+---
+
+### 9.7 Advanced User Analytics & Learning Insights
+
+**Problem:** Users have no visibility into their own learning patterns, progress, or how they use the platform. Teachers can't track student engagement.
+
+**Solution:** A personal analytics dashboard + teacher/admin analytics.
+
+**User Dashboard (`/me/analytics`):**
+```
+┌──────────────────────────────────────────────────────┐
+│  📊 Your Learning Analytics — May 2026               │
+│                                                       │
+│  🔥 Streak: 23 days  |  📖 Hadiths Studied: 342     │
+│  ⏱️ Time Spent: 14h this week  |  🏆 Level: مبتدئ+  │
+│                                                       │
+│  ── Topics Covered ──────────────────────────────     │
+│  ████████████░░ الصيام (78%)                          │
+│  ██████░░░░░░░ الزكاة (45%)                           │
+│  ████░░░░░░░░░ الحج (30%)                             │
+│  ██░░░░░░░░░░░ العقيدة (15%)                          │
+│                                                       │
+│  ── Activity Heatmap ────────────────────────────     │
+│  Mon ▓▓▓░░  Tue ▓▓░░░  Wed ▓▓▓▓░                    │
+│  Thu ▓░░░░  Fri ▓▓▓▓▓  Sat ▓▓░░░  Sun ▓▓▓░░         │
+│                                                       │
+│  ── Agent Usage ─────────────────────────────────     │
+│  RAG: 58%  |  Research: 22%  |  Verify: 12%  |  8%  │
+│                                                       │
+│  ── Recommendations ─────────────────────────────     │
+│  📌 You've not explored أحاديث الطهارة yet           │
+│  📌 Complete your الصيام curriculum (3 lessons left)  │
+│  📌 Try the Comparative Agent for deeper fiqh study   │
+└──────────────────────────────────────────────────────┘
+```
+
+**Teacher Dashboard (for classroom mode):**
+- See all students' progress side-by-side
+- Identify struggling students (low quiz scores, inactivity)
+- Track which topics the class has covered
+- Generate class-wide progress reports
+
+---
+
+### 9.8 Full Accessibility System (a11y)
+
+**Problem:** Islamic knowledge should be accessible to everyone — including users with visual impairments, motor disabilities, and cognitive differences.
+
+**Solution:** WCAG 2.1 AA compliance + Islamic-specific accessibility features.
+
+**Features:**
+
+| Feature | Implementation |
+|---------|--------------|
+| **Screen Reader Support** | Full ARIA labels on all UI elements, Arabic screen reader tested |
+| **RTL Excellence** | Pixel-perfect right-to-left layout, bidirectional text (Arabic + English) |
+| **High Contrast Mode** | Dark/light/high-contrast themes with configurable colors |
+| **Font Scaling** | 5 font sizes (from 14px to 28px), respects OS-level font settings |
+| **Keyboard Navigation** | Full keyboard access to every feature (Tab, Enter, Esc, arrow keys) |
+| **Arabic Diacritics Toggle** | Show/hide tashkeel for readability |
+| **Simplified Mode** | Reduced UI complexity for elderly/beginner users |
+| **Audio Readback** | Any hadith or response can be read aloud with Arabic TTS |
+| **Dyslexia Font** | OpenDyslexic font option for Arabic and English text |
+| **Focus Indicators** | Clear, visible focus outlines that work on dark and light backgrounds |
+| **Motion Reduction** | Respects `prefers-reduced-motion` — disables animations |
+| **Color Blind Safe** | Grade indicators use shapes + text, not just color (✅ not just 🟢) |
+
+---
+
+### 9.9 Mobile App Architecture (React Native)
+
+**Problem:** The PWA covers basic mobile needs, but a native app provides push notifications, offline caching, biometric auth, and a polished mobile UX that the web can't match.
+
+**Solution:** React Native app sharing the same API layer as the web frontend.
+
+**App Screens:**
+
+| Screen | Description |
+|--------|-------------|
+| 🏠 **Home** | Daily journey card, recent chats, quick search |
+| 💬 **Chat** | Full chat with agents, voice input, image upload |
+| 📚 **Library** | Browse hadith collections, saved research, bookmarks |
+| 🔍 **Search** | Semantic search with filters (collection, grade, narrator) |
+| ✅ **Verify** | Camera-first: photograph hadith → instant verification |
+| 🎓 **Learn** | Tutor agent UI, curriculum progress, quizzes |
+| 🕌 **Today** | Prayer times, Islamic calendar, daily hadith |
+| 👤 **Profile** | Settings, analytics, preferences |
+
+**Mobile-Specific Features:**
+
+| Feature | Details |
+|---------|---------|
+| **Camera Verify** | Point camera at any hadith text → real-time OCR + verification |
+| **Offline Mode** | Download collections for offline search (IndexedDB + SQLite) |
+| **Push Notifications** | Daily hadith, learning reminders, scholar responses |
+| **Widget (iOS/Android)** | Home screen widget showing daily hadith + prayer times |
+| **Biometric Auth** | Face ID / fingerprint for secure access |
+| **Share Extension** | Select text in any app → "Verify with Mishkat" |
+| **Siri/Google Assistant** | "Hey Siri, ask Mishkat about fasting" |
+| **Apple Watch / Wear OS** | Prayer time complications, daily hadith glance |
+
+**Architecture:**
+```
+mobile/
+├── apps/
+│   ├── ios/                          # Xcode project
+│   └── android/                      # Gradle project
+├── src/
+│   ├── screens/
+│   │   ├── HomeScreen.tsx
+│   │   ├── ChatScreen.tsx
+│   │   ├── LibraryScreen.tsx
+│   │   ├── SearchScreen.tsx
+│   │   ├── VerifyScreen.tsx          # Camera → OCR → verify
+│   │   ├── LearnScreen.tsx
+│   │   ├── TodayScreen.tsx           # Prayer times + calendar
+│   │   └── ProfileScreen.tsx
+│   ├── components/
+│   │   ├── HadithCard.tsx
+│   │   ├── AgentSelector.tsx
+│   │   ├── VoiceInput.tsx
+│   │   ├── CameraCapture.tsx
+│   │   └── IsnadChain.tsx
+│   ├── services/
+│   │   ├── api.ts                    # Same API client as web
+│   │   ├── offline.ts                # SQLite + IndexedDB cache
+│   │   ├── notifications.ts          # Push notification handler
+│   │   └── biometric.ts              # Face ID / fingerprint
+│   └── navigation/
+│       └── AppNavigator.tsx
+├── package.json
+└── app.json
+```
+
+---
+
+### 9.10 Smart Notification & Digest Engine
+
+**Problem:** Users miss important events — scholar responses to their reviews, new research on topics they follow, learning streak reminders, system announcements.
+
+**Solution:** A unified notification system with smart delivery — right message, right channel, right time.
+
+**Notification Types:**
+
+| Category | Notifications |
+|----------|--------------|
+| **Learning** | Daily hadith, streak reminder, quiz available, curriculum milestone |
+| **Research** | Scholar replied to your review, co-author edited document, new publication on your topic |
+| **System** | New collection ingested, maintenance window, feature announcement |
+| **Social** | Someone cited your research, new follower on Hub, community answer to your question |
+| **Calendar** | Ramadan approaching, Jumu'ah reminder, special day alert |
+| **Admin** | Ingestion complete, error alert, quota warning, security event |
+
+**Delivery Channels:**
+
+| Channel | Use Case |
+|---------|----------|
+| **In-App** | Bell icon + notification drawer (always) |
+| **Push (Mobile)** | Time-sensitive: prayer times, scholar responses |
+| **Email** | Digests: daily summary, weekly research digest |
+| **Discord/Slack** | Team notifications for organizations |
+| **SMS** | Critical: account security, admin alerts |
+
+**Smart Delivery Rules:**
+```yaml
+# Notification preferences engine
+rules:
+  - type: daily_hadith
+    channel: [push, in_app]
+    time: "after_fajr"                # Deliver after user's local Fajr time
+    
+  - type: scholar_response
+    channel: [push, in_app, email]
+    urgency: high
+    deliver: immediately
+    
+  - type: learning_reminder
+    channel: [push]
+    time: "user_preferred_study_time"  # Learned from usage patterns
+    suppress_if: "user_active_today"   # Don't remind if already studying
+    
+  - type: research_digest
+    channel: [email]
+    frequency: weekly
+    day: sunday
+    aggregate: true                    # Bundle all research updates into one email
+```
+
+**Notification Service:**
+```
+notification-service/                # Go
+├── internal/
+│   ├── engine/
+│   │   ├── router.go               # Route notification to correct channels
+│   │   ├── scheduler.go            # Time-based delivery (prayer times, digests)
+│   │   ├── aggregator.go           # Bundle notifications into digests
+│   │   └── suppressor.go           # Smart suppression (don't spam)
+│   ├── channels/
+│   │   ├── in_app.go               # WebSocket push to client
+│   │   ├── push.go                 # FCM (Android) + APNs (iOS)
+│   │   ├── email.go                # SendGrid / SES
+│   │   ├── discord.go              # Webhook
+│   │   ├── slack.go                # Webhook
+│   │   └── sms.go                  # Twilio
+│   ├── templates/
+│   │   ├── daily_hadith.html       # Email template
+│   │   ├── weekly_digest.html
+│   │   └── scholar_response.html
+│   └── preferences/
+│       └── user_prefs.go           # Per-user notification preferences
 ```
 
 ---
