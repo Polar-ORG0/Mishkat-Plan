@@ -1299,17 +1299,106 @@ $ msk admin cache flush`} />
         </div>
       </Card>
 
-      {/* Canvas Card */}
-      <Card title="Automation Canvas" icon={Workflow}>
-        <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
-          Visual n8n-style drag-and-drop pipeline builder. Runs on a dedicated Java DAG executor service. Automates tasks like Daily Hadith digests or Fatwa alerts.
+      {/* Canvas Card — Full MSA description */}
+      <Card title="Mishkat Automation Canvas (MSA) — Islamic App Builder" icon={Workflow}>
+        <p className="text-sm text-zinc-400 mb-3 leading-relaxed">
+          MSA is a <strong className="text-zinc-100">no-code Islamic app builder and Backend-as-a-Service platform</strong>. Anyone — developer, scholar, mosque admin — can visually connect blocks to build a fully functional Islamic app or backend API, with <strong className="text-zinc-100">zero backend or AI knowledge required</strong>.
         </p>
-        <ul className="space-y-2 text-sm text-zinc-300">
-          <li className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> <strong className="text-zinc-100">Triggers:</strong> Schedule, Webhook, Event (New Fatwa)</li>
-          <li className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> <strong className="text-zinc-100">Agents:</strong> Wrapper around the 9 core agents</li>
-          <li className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500"></div> <strong className="text-zinc-100">Logic:</strong> Filter, Branch, Loop, Merge</li>
-          <li className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> <strong className="text-zinc-100">Outputs:</strong> Discord, Email, MKS Push, Hub Publish</li>
-        </ul>
+
+        {/* Core value prop */}
+        <div className="bg-orange-500/5 border border-orange-500/20 rounded-lg p-3 mb-4">
+          <p className="text-xs text-orange-300 font-semibold uppercase tracking-wider mb-1">What MSA Really Is</p>
+          <p className="text-sm text-zinc-300 leading-relaxed">
+            Build a complete app frontend (React, Flutter, Next.js) and use a <strong className="text-zinc-100">single Webhook block as your entire backend</strong>. POST your request → MSA runs the pipeline → returns structured JSON. No server. No AI code. No deployment.
+          </p>
+        </div>
+
+        {/* Three roles */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {[
+            { label: 'For Scholars', desc: 'Build automated research & fatwa workflows visually', color: 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400' },
+            { label: 'For Devs', desc: 'Use as Islamic knowledge API backend — one webhook call', color: 'border-blue-500/30 bg-blue-500/5 text-blue-400' },
+            { label: 'For Anyone', desc: 'No code needed — drag blocks, hit Run, publish to marketplace', color: 'border-amber-500/30 bg-amber-500/5 text-amber-400' },
+          ].map((r, i) => (
+            <div key={i} className={`rounded-lg border p-2 ${r.color}`}>
+              <p className="text-[11px] font-bold mb-1">{r.label}</p>
+              <p className="text-[10px] text-zinc-400 leading-relaxed">{r.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Block types */}
+        <p className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">Block Types</p>
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          {[
+            { dot: 'bg-emerald-500', label: 'Triggers', items: 'Schedule · Webhook · Event · Manual · CLI' },
+            { dot: 'bg-blue-500',   label: 'Agent Blocks', items: 'RAG · Research · Verify · Translate · Compare · Tutor' },
+            { dot: 'bg-amber-500',  label: 'Logic Blocks', items: 'Filter · Branch (IF/ELSE) · Loop · Merge · Sort · Limit' },
+            { dot: 'bg-red-500',    label: 'Output Blocks', items: 'Email · WhatsApp · Discord · Telegram · HTTP · Hub Publish' },
+          ].map((b, i) => (
+            <div key={i} className="flex items-start gap-2 bg-zinc-800/40 rounded p-2 border border-zinc-800">
+              <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${b.dot}`}></div>
+              <div>
+                <p className="text-xs font-bold text-zinc-200">{b.label}</p>
+                <p className="text-[10px] text-zinc-500 leading-relaxed">{b.items}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Example pipeline as backend */}
+        <p className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">Example: App Using MSA as Full Backend</p>
+        <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-xs font-mono space-y-1 mb-3">
+          <div className="text-zinc-500">// React Native app — entire backend is one webhook</div>
+          <div className="text-zinc-400">POST <span className="text-orange-400">api.mishkat.app/automations/webhook/abc123</span></div>
+          <div className="text-zinc-400">{'{'} <span className="text-cyan-400">"query"</span>: <span className="text-emerald-400">"ما حكم صيام يوم الشك"</span>, <span className="text-cyan-400">"lang"</span>: <span className="text-emerald-400">"en"</span> {'}'}</div>
+          <div className="text-zinc-600">// MSA runs: RAG → Verify → Translate → Format</div>
+          <div className="text-zinc-400">{'{'} <span className="text-cyan-400">"answer"</span>: <span className="text-emerald-400">"..."</span>, <span className="text-cyan-400">"grade"</span>: <span className="text-emerald-400">"صحيح"</span>, <span className="text-cyan-400">"source"</span>: <span className="text-emerald-400">"البخاري 1906"</span>,</div>
+          <div className="text-zinc-400 pl-4"><span className="text-cyan-400">"translations"</span>: {'{'} <span className="text-emerald-400">"en"</span>: <span className="text-emerald-400">"..."</span>, <span className="text-emerald-400">"ur"</span>: <span className="text-emerald-400">"..."</span> {'}'} {'}'}</div>
+        </div>
+
+        {/* Real app examples */}
+        <p className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">Apps Anyone Can Build</p>
+        <div className="space-y-1.5">
+          {[
+            { icon: '📱', app: 'Hadith Verification Mobile App', desc: 'Frontend only — MSA handles all AI + verification' },
+            { icon: '🕌', app: 'Mosque Website Backend', desc: 'Prayer times + daily hadith + calendar via one GET request' },
+            { icon: '📚', app: 'Islamic Learning Flutter App', desc: 'Lessons + quizzes + translations — all from one pipeline' },
+            { icon: '🌐', app: 'Islamic Q&A Website', desc: 'Full 4-madhab fatwa answers — no backend written' },
+            { icon: '🤖', app: 'Daily Hadith WhatsApp Bot', desc: 'Schedule trigger → RAG → Translate → WhatsApp output' },
+          ].map((ex, i) => (
+            <div key={i} className="flex items-start gap-2 text-sm p-2 rounded border border-zinc-800 bg-zinc-800/20">
+              <span className="text-base shrink-0">{ex.icon}</span>
+              <div>
+                <span className="font-bold text-zinc-200">{ex.app}</span>
+                <span className="text-zinc-500 ml-2 text-xs">{ex.desc}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Pipeline marketplace */}
+        <div className="mt-3 p-3 bg-zinc-800/30 border border-zinc-700 rounded-lg">
+          <p className="text-xs font-bold text-zinc-200 mb-1">🛒 Pipeline Marketplace</p>
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            Built pipelines can be <strong className="text-zinc-200">published to the marketplace</strong>. Any mosque, school, or developer installs them in one click — turning Mishkat into an <strong className="text-zinc-200">Islamic app ecosystem</strong>, not just a platform.
+          </p>
+        </div>
+
+        {/* Comparable to */}
+        <div className="mt-3 grid grid-cols-4 gap-1.5 text-center">
+          {[
+            { name: 'Firebase', role: 'Backend BaaS' },
+            { name: 'Supabase', role: 'DB BaaS' },
+            { name: 'OpenAI API', role: 'AI BaaS' },
+            { name: 'Mishkat MSA', role: 'Islamic Knowledge BaaS', highlight: true },
+          ].map((c, i) => (
+            <div key={i} className={`p-2 rounded border text-xs ${c.highlight ? 'border-orange-500/50 bg-orange-500/10 text-orange-300' : 'border-zinc-700 bg-zinc-800/30 text-zinc-400'}`}>
+              <p className="font-bold">{c.name}</p>
+              <p className="text-[10px] mt-0.5 opacity-70">{c.role}</p>
+            </div>
+          ))}
+        </div>
       </Card>
 
       {/* Hub Card */}
