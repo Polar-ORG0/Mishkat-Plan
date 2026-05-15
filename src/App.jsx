@@ -75,31 +75,37 @@ const microservices = [
     details: 'Stores JSON preferences (madhab, theme, diacritics toggle) in Redis/Postgres. Tracks curriculum progress.'
   },
   {
-    id: 'S5', name: 'Query Service', lang: 'Go',
+    id: 'S5', name: 'Billing Service', lang: 'Go',
+    purpose: 'Implements a coins-based economy for the platform, handles purchases, transactions, and micro-billing.',
+    architecture: ['WalletService', 'LedgerService', 'PricingService', 'PaymentService (Stripe)', 'GrantService', 'DistributedLock', 'IdempotencyKey'],
+    details: 'Enforces balance checks atomically before any chargeable request. Decouples monetary pricing from usage costs. Integrates with Stripe.'
+  },
+  {
+    id: 'S6', name: 'Query Service', lang: 'Go',
     purpose: 'The orchestrator. Receives queries, calls Python RAG via gRPC, manages streaming.',
     architecture: ['QueryOrchestrator', 'CacheService (Redis + Qdrant)', 'StreamManager (SSE)', 'RetryHandler (Circuit Breaker)', 'MetricsCollector'],
     details: 'Checks exact Redis cache first, then Qdrant semantic cache (>0.95 sim), then calls Python RAG Engine via gRPC. Assembles response with citations.'
   },
   {
-    id: 'S6', name: 'Chat Service', lang: 'Go',
+    id: 'S7', name: 'Chat Service', lang: 'Go',
     purpose: 'Real-time chat, WebSocket connections, conversation memory.',
     architecture: ['ChatService', 'MessageService', 'WebSocketHub (Gorilla)', 'TitleGenerator (via RAG)', 'ConversationMemory'],
     details: 'Maintains last 20 messages in Redis for sliding window context. Broadcasts typing indicators. Persists to MongoDB.'
   },
   {
-    id: 'S7', name: 'RAG Engine', lang: 'Python',
+    id: 'S8', name: 'RAG Engine', lang: 'Python',
     purpose: 'AI core executing the pipeline. Exposes gRPC to Query Service.',
     architecture: ['PreProcessor', 'QueryRewriter', 'MultiCollectionRetriever', 'DocumentReranker', 'ResponseGenerator', 'PostProcessor (Hallucinations)'],
     details: 'Includes an LLM Cascading Failover (Google -> Ollama -> Cohere -> HuggingFace) with Circuit Breakers to prevent downtime.'
   },
   {
-    id: 'S8', name: 'Embedding Service', lang: 'Python',
+    id: 'S9', name: 'Embedding Service', lang: 'Python',
     purpose: 'Model inference service for text embedding. Decoupled for GPU scaling.',
     architecture: ['SingleEmbedder', 'BatchEmbedder (Kafka)', 'EmbeddingCache (Redis)', 'ModelManager (BGE-M3, Jina, Cohere)'],
     details: 'Caching embeddings by sha256 text hash eliminates ~40% of redundant API calls. Batch jobs triggered async via Kafka.'
   },
   {
-    id: 'S9', name: 'Agent Orchestrator', lang: 'Python',
+    id: 'S10', name: 'Agent Orchestrator', lang: 'Python',
     purpose: 'Multi-agent system using LangGraph. Supervisor routes to specialist agents.',
     architecture: ['IntentClassifier', 'ExecutionPlanner', 'AgentRouter', 'ToolRegistry (38 tools)', 'MemoryManager (Short, Working, Long, Semantic)'],
     details: 'Enforces RBAC on tool execution. Agents coordinate through shared state to execute parallel or sequential plans.'
