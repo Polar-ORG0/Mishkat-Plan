@@ -2807,7 +2807,7 @@ mishkat-platform/
 │   ├── query-service/               # Go — existing
 │   ├── chat-service/                # Go — existing
 │   ├── data-service/                # Java Spring — existing
-│   ├── reference-service/           # .NET 8 — existing
+│   ├── reference-service/           # Java 21 — existing
 │   ├── rag-engine/                  # Python — existing
 │   ├── agent-orchestrator/          # Python — existing
 │   │

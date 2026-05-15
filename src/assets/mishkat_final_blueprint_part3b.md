@@ -6,7 +6,7 @@
 
 ---
 
-## S5. Query Service — Go (Gin + gRPC)
+## S5. Query Service — Java (Spring WebFlux + gRPC)
 
 ### Purpose
 The **orchestrator** — receives user queries from the gateway, calls the Python RAG Engine via gRPC, manages streaming, caching, and response assembly.
@@ -112,7 +112,7 @@ query-service/
 
 ---
 
-## S6. Chat Service — Go (Gin + WebSocket)
+## S6. Chat Service — Java (Spring WebSocket)
 
 ### Purpose
 Real-time chat management — WebSocket connections, chat sessions, message persistence, conversation memory.
@@ -595,7 +595,7 @@ flowchart LR
     GW -->|REST/WS| CHAT[Chat — Go]
     GW -->|REST| USER[User — Go]
     GW -->|REST| DATA[Data — Java]
-    GW -->|REST| REF[Reference — .NET]
+    GW -->|REST| REF[Reference — Java]
     
     QUERY -->|gRPC| RAG[RAG Engine — Python]
     QUERY -->|gRPC| AGENT[Agent Orchestrator — Python]

@@ -478,7 +478,7 @@ data-service/
 
 ---
 
-## S2. Reference Service — .NET 8
+## S2. Reference Service — Java 21
 
 ### Purpose
 Manages reference sources (books, collections), handles complex document parsing (PDF manuscripts, scanned pages), and maintains the reference catalog.
@@ -487,7 +487,7 @@ Manages reference sources (books, collections), handles complex document parsing
 
 ```mermaid
 flowchart TD
-    subgraph API["ASP.NET Minimal API"]
+    subgraph API["Spring Web"]
         EP1["POST /api/v1/ref/ — Create reference"]
         EP2["GET /api/v1/ref/ — List all"]
         EP3["GET /api/v1/ref/:name — Get by name"]
@@ -498,9 +498,9 @@ flowchart TD
     end
 
     subgraph Parsers["📄 Document Parsers"]
-        PDF_P[PdfParser — iText7]
-        DOCX_P[DocxParser — NPOI]
-        EXCEL_P[ExcelParser — NPOI]
+        PDF_P[PdfParser — iText]
+        DOCX_P[DocxParser — Apache POI]
+        EXCEL_P[ExcelParser — Apache POI]
         EPUB_P[EpubParser — EpubSharp]
         IMAGE_P[ImageParser — Tesseract OCR]
         FACTORY_P{ParserFactory}
@@ -537,9 +537,9 @@ flowchart TD
 
 | Parser | Library | Capabilities |
 |--------|---------|-------------|
-| `PdfParser` | **iText7** | Extract text preserving Arabic RTL, detect columns, handle embedded fonts, extract images + footnotes |
-| `DocxParser` | **NPOI** | Parse Word documents with Arabic text, extract tables, headers, footnotes |
-| `ExcelParser` | **NPOI** | Import hadith databases stored in Excel (common for academic datasets). Column mapping config. |
+| `PdfParser` | **iText** | Extract text preserving Arabic RTL, detect columns, handle embedded fonts, extract images + footnotes |
+| `DocxParser` | **Apache POI** | Parse Word documents with Arabic text, extract tables, headers, footnotes |
+| `ExcelParser` | **Apache POI** | Import hadith databases stored in Excel (common for academic datasets). Column mapping config. |
 | `EpubParser` | **EpubSharp** | Parse Islamic e-books in EPUB format. Chapter-aware extraction. |
 | `ImageParser` | **Tesseract OCR** | OCR for scanned manuscript pages. Arabic model + custom Islamic terms dictionary for accuracy. |
 
@@ -582,7 +582,7 @@ reference-service/
 
 ---
 
-## S3. Auth Service — Go (Gin)
+## S3. Auth Service — Java (Gin)
 
 ### Purpose
 High-performance authentication and authorization. Handles JWT lifecycle, OAuth2, RBAC, MFA, and API key management.
@@ -792,3 +792,454 @@ user-service/
 ├── go.mod
 └── Dockerfile
 ```
+---
+
+## S5. Billing Service — Java (Gin) 🪙
+
+### Overview
+
+The **Billing Service** implements a **coins-based economy** for the Mishkat platform. Users purchase coins (via Stripe or other payment gateways) and spend them to use premium features — advanced AI agents, deep research, PDF exports, and more. Each operation has a defined coin price, and the service enforces balance checks atomically before any chargeable request is processed.
+
+**Why Coins?**
+- Decouples monetary pricing from usage costs — coin prices are set internally and can be adjusted without touching payment infrastructure
+- Works across currencies naturally (coins have a fixed exchange rate per purchase package)
+- Enables subscriptions, gifting, scholarships, and institutional bulk grants
+- Simplifies micro-billing — charging $0.003 per query is impractical via Stripe; deducting 1 coin is instant
+
+---
+
+### Coin Economy Design
+
+#### Coin Packages (Purchase)
+
+| Package | Coins | Price (USD) | Per-Coin Rate | Notes |
+|---------|-------|-------------|--------------|-------|
+| Starter | 100 coins | $2.99 | $0.030/coin | One-time |
+| Standard | 500 coins | $9.99 | $0.020/coin | Most popular |
+| Scholar | 2,000 coins | $29.99 | $0.015/coin | For researchers |
+| Institution | 10,000 coins | $99.99 | $0.010/coin | Bulk — admin grants |
+| Free Tier | 20 coins/month | Free | — | Auto-granted monthly |
+
+#### Feature Pricing (Coin Cost per Operation)
+
+| Feature | Agent/Tool | Coin Cost | Notes |
+|---------|-----------|-----------|-------|
+| Basic Q&A | RAG Agent | 1 coin | Standard hadith lookup |
+| Research Report | Research Agent | 5 coins | Multi-source deep research |
+| Madhab Comparison | Comparative Agent | 3 coins | Cross-madhab analysis |
+| Hadith Verification | Verification Agent | 3 coins | Full Isnad analysis |
+| Translation | Translation Agent | 2 coins | Per language pair |
+| Summarization | Summary Agent | 2 coins | Topic overview |
+| PDF Export | Reference Service | 3 coins | Download research as PDF |
+| Automation Pipeline Run | Automation Service | 5 coins | Per pipeline execution |
+| Skill Execution | Skill Registry | 2–10 coins | Varies by skill complexity |
+| Web Search (per call) | Tool: `web_search` | 1 coin | External API cost passthrough |
+| CLI Query (`msk query`) | RAG Agent | 1 coin | Same as in-app |
+| CLI Research | Research Agent | 5 coins | Same as in-app |
+
+> **Free operations (0 coins):** Basic chat with General Agent, browsing the reference library, viewing saved research, using the Tutor Agent (first 5 queries/day), CLI `msk knowledge stats`, auth operations.
+
+---
+
+### Architecture
+
+```mermaid
+flowchart TD
+    subgraph Client["🖥️ Client (Web / CLI / Mobile)"]
+        USER[User Action — "Run Research Agent"]
+    end
+
+    subgraph Gateway["🚪 API Gateway — Go"]
+        GW[Gateway Service]
+        COIN_MW[CoinCheckMiddleware]
+    end
+
+    subgraph Billing["💰 Billing Service — Java"]
+        subgraph API_B["REST API"]
+            B1["POST /billing/coins/purchase"]
+            B2["GET /billing/coins/balance"]
+            B3["POST /billing/coins/deduct — internal"]
+            B4["POST /billing/coins/refund — internal"]
+            B5["GET /billing/transactions"]
+            B6["POST /billing/coins/grant — admin"]
+            B7["GET /billing/pricing"]
+        end
+
+        subgraph Core_B["Core Services"]
+            WALLET[WalletService — balance management]
+            LEDGER[LedgerService — immutable transaction log]
+            PRICER[PricingService — feature → coin cost]
+            PAYMENT[PaymentService — Stripe integration]
+            GRANT[GrantService — admin coin grants]
+        end
+
+        subgraph Safety["⚛️ Atomicity Layer"]
+            LOCK[DistributedLock — Redis]
+            IDEMPOTENT[IdempotencyKey — deduplicate charges]
+        end
+    end
+
+    subgraph Downstream["⚙️ Chargeable Services"]
+        QS[Query Service]
+        RAG[RAG Engine]
+        AUTO[Automation Service]
+        REF[Reference Service]
+    end
+
+    subgraph Storage_B["💾 Storage"]
+        PG_B[(PostgreSQL — wallets, transactions)]
+        REDIS_B[(Redis — balance cache, locks)]
+        STRIPE[(Stripe API)]
+    end
+
+    USER --> GW --> COIN_MW
+    COIN_MW -->|check balance| WALLET
+    COIN_MW -->|if sufficient| QS & RAG & AUTO & REF
+    COIN_MW -->|deduct on success| LEDGER
+
+    B1 --> PAYMENT --> STRIPE
+    PAYMENT -->|on success| WALLET
+    B2 --> WALLET --> REDIS_B
+    B3 --> LOCK --> LEDGER --> PG_B
+    B4 --> LEDGER
+    B6 --> GRANT --> WALLET
+
+    WALLET --> PG_B
+    LEDGER --> PG_B
+  
+```plain
+1. User clicks "Buy 500 coins" in UI
+2. Frontend → POST /billing/coins/purchase {package: "standard", payment_method_id: "pm_xxx"}
+3. Billing Service → PaymentService → Stripe API (charge $9.99)
+4. Stripe confirms → PaymentService returns success
+5. WalletService → atomically add 500 coins to user balance
+6. LedgerService → record: {type: CREDIT, amount: 500, source: PURCHASE, stripe_payment_id: "pi_xxx"}
+7. Return updated balance to user
+```
+
+```plain
+1. User → POST /api/v1/query {query: "اجمع أحاديث الصيام", agent: "research"}
+2. Gateway → CoinCheckMiddleware → GET user balance from Redis cache
+3. PricingService → lookup "research" agent → cost = 5 coins
+4. If balance < 5 → return 402 Payment Required {"error": "insufficient_coins", "required": 5, "balance": 3}
+5. If balance >= 5:
+   a. Acquire distributed lock on user_id (Redis SETNX, 10s TTL)
+   b. Re-check balance from PostgreSQL (prevent race conditions)
+   c. Deduct 5 coins atomically (UPDATE wallet SET balance = balance - 5 WHERE user_id = ? AND balance >= 5)
+   d. If UPDATE affected 0 rows → insufficient balance (race lost) → 402
+   e. Insert ledger row: {type: DEBIT, amount: 5, feature: "research_agent", request_id: "req_xxx"}
+   f. Release lock
+   g. Forward request to Query Service
+6. On upstream error (RAG Engine fails, timeout) → Billing Service refunds 5 coins automatically
+```
+
+```json
+{
+  "package_id": "standard",
+  "payment_method_id": "pm_stripe_xxx",
+  "idempotency_key": "buy_abc123"
+}
+
+// Response 200:
+{
+  "transaction_id": "txn_xyz",
+  "coins_added": 500,
+  "new_balance": 523,
+  "stripe_payment_id": "pi_xxx",
+  "receipt_url": "[https://receipt.stripe.com/](https://receipt.stripe.com/)..."
+}
+```
+
+
+```json
+// Response 200:
+{
+  "transactions": [
+    {
+      "id": "txn_001",
+      "type": "DEBIT",
+      "amount": 5,
+      "feature": "research_agent",
+      "description": "Research Agent — أحاديث الصيام",
+      "balance_after": 518,
+      "timestamp": "2026-05-14T10:00:00Z"
+    },
+    {
+      "id": "txn_002",
+      "type": "CREDIT",
+      "amount": 500,
+      "source": "PURCHASE",
+      "description": "Standard Package — 500 coins",
+      "balance_after": 523,
+      "timestamp": "2026-05-14T09:00:00Z"
+    }
+  ],
+  "total": 47,
+  "page": 1
+}
+
+```
+
+```json 
+// Response 200:
+{
+  "transactions": [
+    {
+      "id": "txn_001",
+      "type": "DEBIT",
+      "amount": 5,
+      "feature": "research_agent",
+      "description": "Research Agent — أحاديث الصيام",
+      "balance_after": 518,
+      "timestamp": "2026-05-14T10:00:00Z"
+    },
+    {
+      "id": "txn_002",
+      "type": "CREDIT",
+      "amount": 500,
+      "source": "PURCHASE",
+      "description": "Standard Package — 500 coins",
+      "balance_after": 523,
+      "timestamp": "2026-05-14T09:00:00Z"
+    }
+  ],
+  "total": 47,
+  "page": 1
+}
+```
+
+```json 
+// Response 200:
+{
+  "features": [
+    {"feature": "rag_agent",          "coins": 1, "description": "Basic Q&A"},
+    {"feature": "research_agent",     "coins": 5, "description": "Deep Research Report"},
+    {"feature": "verification_agent", "coins": 3, "description": "Hadith Verification"},
+    {"feature": "comparative_agent",  "coins": 3, "description": "Madhab Comparison"},
+    {"feature": "translation_agent",  "coins": 2, "description": "Translation"},
+    {"feature": "summary_agent",      "coins": 2, "description": "Summarization"},
+    {"feature": "pdf_export",         "coins": 3, "description": "Export as PDF"},
+    {"feature": "automation_run",     "coins": 5, "description": "Pipeline Execution"},
+    {"feature": "web_search_call",    "coins": 1, "description": "External web search (per call)"}
+  ],
+  "packages": [
+    {"id": "starter",     "coins": 100,   "price_usd": 2.99},
+    {"id": "standard",    "coins": 500,   "price_usd": 9.99},
+    {"id": "scholar",     "coins": 2000,  "price_usd": 29.99},
+    {"id": "institution", "coins": 10000, "price_usd": 99.99}
+  ]
+}
+```
+
+```json
+{
+  "user_id": "usr_12345",
+  "amount": 200,
+  "reason": "scholarship_grant",
+  "expires_at": "2027-01-01T00:00:00Z"
+}
+
+// Response 200:
+{
+  "granted": 200,
+  "new_balance": 723,
+  "grant_id": "grant_abc"
+}
+```
+
+```go 
+// gateway-service/internal/middleware/coin_check_middleware.go
+
+type CoinCheckMiddleware struct {
+    billingClient billing.Client   // gRPC or HTTP client to Billing Service
+    pricingCache  *PricingCache    // In-memory pricing table, refreshed every 5min
+}
+
+func (m *CoinCheckMiddleware) Handle(c *gin.Context) {
+    userID := c.GetHeader("X-User-Id")
+    feature := m.resolveFeature(c.Request.URL.Path, c.Query("agent"))
+    
+    // Free operations (0 coins) skip billing entirely
+    cost := m.pricingCache.Get(feature)
+    if cost == 0 {
+        c.Next()
+        return
+    }
+    
+    // Check + reserve coins (pre-deduction with request_id for idempotent refund)
+    requestID := c.GetHeader("X-Request-Id")
+    result, err := m.billingClient.CheckAndDeduct(userID, cost, feature, requestID)
+    if err != nil || !result.Success {
+        c.AbortWithStatusJSON(402, gin.H{
+            "error":    "insufficient_coins",
+            "required": cost,
+            "balance":  result.Balance,
+            "top_up_url": "[https://mishkat.app/billing](https://mishkat.app/billing)",
+        })
+        return
+    }
+    
+    // Store deduction context for refund on failure
+    c.Set("billing_request_id", requestID)
+    c.Set("billing_cost", cost)
+    
+    // Call downstream service
+    c.Next()
+    
+    // Auto-refund on 5xx from upstream
+    if c.Writer.Status() >= 500 {
+        m.billingClient.Refund(userID, requestID, cost, "upstream_failure")
+    }
+}
+
+func (m *CoinCheckMiddleware) resolveFeature(path, agentParam string) string {
+    switch {
+    case strings.Contains(path, "/query") && agentParam == "research":
+        return "research_agent"
+    case strings.Contains(path, "/query") && agentParam == "verify":
+        return "verification_agent"
+    case strings.Contains(path, "/query"):
+        return "rag_agent"
+    case strings.Contains(path, "/automation"):
+        return "automation_run"
+    case strings.Contains(path, "/ref") && strings.Contains(path, "/export"):
+        return "pdf_export"
+    default:
+        return "free"
+    }
+}
+```
+
+```sql
+-- Wallet: one per user
+CREATE TABLE wallets (
+    user_id     UUID PRIMARY KEY REFERENCES users(id),
+    balance     INTEGER NOT NULL DEFAULT 0 CHECK (balance >= 0),
+    lifetime_purchased INTEGER NOT NULL DEFAULT 0,
+    lifetime_spent     INTEGER NOT NULL DEFAULT 0,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Immutable ledger: every coin movement
+CREATE TABLE coin_transactions (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id         UUID NOT NULL REFERENCES users(id),
+    type            VARCHAR(10) NOT NULL CHECK (type IN ('CREDIT', 'DEBIT', 'REFUND', 'GRANT', 'EXPIRE')),
+    amount          INTEGER NOT NULL CHECK (amount > 0),
+    balance_after   INTEGER NOT NULL,
+    feature         VARCHAR(50),           -- null for purchases/grants
+    request_id      UUID,                  -- links to the API request that triggered deduction
+    source          VARCHAR(50),           -- 'PURCHASE', 'FREE_GRANT', 'ADMIN_GRANT', 'REFUND'
+    stripe_payment_id VARCHAR(100),        -- for purchase transactions
+    description     TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_coin_tx_user_id ON coin_transactions(user_id, created_at DESC);
+CREATE UNIQUE INDEX idx_coin_tx_request_id ON coin_transactions(request_id) WHERE request_id IS NOT NULL;
+
+-- Pricing table (admin-configurable without deployment)
+CREATE TABLE feature_pricing (
+    feature         VARCHAR(50) PRIMARY KEY,
+    coin_cost       INTEGER NOT NULL CHECK (coin_cost >= 0),
+    description     TEXT,
+    active          BOOLEAN NOT NULL DEFAULT TRUE,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Coin packages (admin-configurable)
+CREATE TABLE coin_packages (
+    id              VARCHAR(50) PRIMARY KEY,
+    coins           INTEGER NOT NULL,
+    price_usd_cents INTEGER NOT NULL,
+    stripe_price_id VARCHAR(100),
+    active          BOOLEAN NOT NULL DEFAULT TRUE
+);
+```
+
+```plain
+billing-service/                     # Go — Gin
+├── cmd/
+│   └── main.go
+├── internal/
+│   ├── handlers/
+│   │   ├── purchase_handler.go      # POST /billing/coins/purchase
+│   │   ├── balance_handler.go       # GET /billing/coins/balance
+│   │   ├── deduct_handler.go        # POST /billing/coins/deduct (internal)
+│   │   ├── refund_handler.go        # POST /billing/coins/refund (internal)
+│   │   ├── transaction_handler.go   # GET /billing/transactions
+│   │   ├── grant_handler.go         # POST /billing/coins/grant (admin)
+│   │   └── pricing_handler.go       # GET /billing/pricing
+│   ├── services/
+│   │   ├── wallet_service.go        # Balance read/write with Redis cache
+│   │   ├── ledger_service.go        # Immutable transaction log
+│   │   ├── pricing_service.go       # Feature → coin cost lookup + cache
+│   │   ├── payment_service.go       # Stripe integration (charge, refund, webhook)
+│   │   └── grant_service.go         # Admin coin grants + expiry scheduling
+│   ├── atomicity/
+│   │   ├── distributed_lock.go      # Redis SETNX-based per-user lock
+│   │   └── idempotency.go           # Idempotency key check (prevent double charges)
+│   ├── stripe/
+│   │   ├── client.go                # Stripe SDK wrapper
+│   │   ├── webhook_handler.go       # Handle payment_intent.succeeded events
+│   │   └── checkout_builder.go      # Build Stripe Checkout sessions
+│   ├── scheduler/
+│   │   └── free_grant_job.go        # Monthly free coin grant (cron: 1st of month)
+│   ├── models/
+│   │   ├── wallet.go
+│   │   ├── transaction.go
+│   │   ├── package.go
+│   │   └── feature_price.go
+│   ├── repository/
+│   │   ├── wallet_repo.go           # PostgreSQL wallet CRUD
+│   │   ├── transaction_repo.go      # PostgreSQL ledger inserts + queries
+│   │   └── pricing_repo.go          # PostgreSQL feature pricing
+│   └── middleware/
+│       ├── auth_middleware.go        # JWT validation
+│       └── internal_auth.go          # Internal service auth (shared secret)
+├── go.mod
+└── Dockerfile
+```
+
+```yaml 
+- prefix: /billing
+    upstream: http://billing-service:8007
+    strip_prefix: false
+    public: false
+    rate_limit: 30/min               # Prevent billing endpoint abuse
+    timeout: 30s
+```
+
+```yaml 
+- name: billing
+      url: http://billing-service:8007/health
+```
+
+Action	Endpoint	Use Case
+Adjust feature price	PUT /billing/pricing/:feature	Tune coin costs based on actual LLM costs
+Create/disable package	PUT /billing/packages/:id	Run promotions, disable old packages
+Grant coins to user	POST /billing/coins/grant	Scholarships, compensation, testing
+View all transactions	GET /billing/admin/transactions	Audit, fraud detection
+View revenue summary	GET /billing/admin/revenue	Monthly revenue by package
+Bulk grant to role	POST /billing/coins/bulk-grant	Give free coins to all scholars
+
+
+```plain
+mishkat-platform/
+├── services/
+│   ├── ...existing services...
+│   └── billing-service/             # NEW — Go — Coin economy + Stripe
+│       ├── cmd/
+│       ├── internal/
+│       └── go.mod
+```
+
+Metric,Type,Description
+coins_purchased_total,Counter,Total coins ever purchased
+coins_spent_total,Counter,"Total coins spent, by feature"
+coins_refunded_total,Counter,"Total coins refunded, by reason"
+wallet_balance_p50/p95,Histogram,Distribution of user balances
+billing_deduction_latency_ms,Histogram,Time to check + deduct coins
+insufficient_balance_total,Counter,Requests blocked for insufficient coins
+stripe_payment_success_total,Counter,Successful Stripe payments
+stripe_payment_failure_total,Counter,Failed Stripe payments

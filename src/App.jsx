@@ -5,7 +5,7 @@ import {
   Layers, CheckCircle2, Activity, BookOpen, 
   Cpu, FileText, MessagesSquare, Check,
   AlertTriangle, Settings, Camera, CalendarDays, Users,
-  RefreshCw
+  RefreshCw, ChevronDown, ChevronRight, ListChecks
 } from 'lucide-react';
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -19,6 +19,8 @@ import part2 from './assets/mishkat_final_blueprint_part2.md?raw';
 import part3a from './assets/mishkat_final_blueprint_part3a.md?raw';
 import part3b from './assets/mishkat_final_blueprint_part3b.md?raw';
 import advanced from './assets/mishkat_advanced_features.md?raw';
+
+import { sprintsData } from './assets/sprintsData';
 
 // ==========================================
 // MASSIVE DATA MODELS (Expanded details from all files)
@@ -34,11 +36,11 @@ const currentAudit = [
 ];
 
 const techStack = [
-  { service: 'API Gateway', lang: 'Go', framework: 'Gin + ReverseProxy', reason: 'Custom-built: full control, sub-ms routing, native middleware chain (Recovery, RequestId, Logger, Tracing, Cors, RateLimit, Jwt, Sanitizer).' },
-  { service: 'Auth & User Services', lang: 'Go', framework: 'Gin', reason: 'Sub-ms token validation, minimal memory, highly concurrent. Handles OAuth, TOTP MFA, API Keys, and User profiles.' },
-  { service: 'Query & Chat Services', lang: 'Go', framework: 'Gin + Gorilla WS / gRPC', reason: 'Orchestrates AI calls, checks Redis/Qdrant caches, handles SSE streaming backpressure.' },
+  { service: 'API Gateway', lang: 'Java Spring Boot', framework: 'Gin + ReverseProxy', reason: 'Custom-built: full control, sub-ms routing, native middleware chain (Recovery, RequestId, Logger, Tracing, Cors, RateLimit, Jwt, Sanitizer).' },
+  { service: 'Auth & User Services', lang: 'Java Spring Boot', framework: 'Gin', reason: 'Sub-ms token validation, minimal memory, highly concurrent. Handles OAuth, TOTP MFA, API Keys, and User profiles.' },
+  { service: 'Query & Chat Services', lang: 'Java Spring Boot', framework: 'Gin + Gorilla WS / gRPC', reason: 'Orchestrates AI calls, checks Redis/Qdrant caches, handles SSE streaming backpressure.' },
   { service: 'Data Ingestion', lang: 'Java', framework: 'Spring Boot 3 + Spring Batch', reason: 'Enterprise batch processing, scheduling, transactional ETL. Includes Readers (PDF, DB, XML) and Validators.' },
-  { service: 'Reference Service', lang: '.NET 8', framework: 'ASP.NET Minimal API', reason: 'iText7 for PDF, NPOI for Excel, rich document parsing. Extracts structure and maintains catalog.' },
+  { service: 'Reference Service', lang: 'Java Spring Boot', framework: 'Spring Web', reason: 'iText for PDF, Apache POI for Excel, rich document parsing. Extracts structure and maintains catalog.' },
   { service: 'RAG & Embedding', lang: 'Python', framework: 'FastAPI + gRPC', reason: 'AI Core. Cascading LLM Failovers, embedding caches, batch embedding via Kafka.' },
   { service: 'Agent Orchestrator', lang: 'Python', framework: 'LangGraph', reason: 'Multi-agent orchestration, tool routing, memory management (Short, Working, Long, Semantic, Episodic).' },
 ];
@@ -57,37 +59,37 @@ const microservices = [
     details: 'Outputs to Mongo, S3, and fires Kafka events (ingestion.complete) to trigger Python Embedding service.'
   },
   {
-    id: 'S2', name: 'Reference Service', lang: '.NET 8',
+    id: 'S2', name: 'Reference Service', lang: 'Java Spring Boot',
     purpose: 'Manages reference sources, document parsing (PDF, DOCX), and catalog maintenance.',
-    architecture: ['PdfParser (iText7)', 'Docx/ExcelParser (NPOI)', 'EpubParser', 'ImageParser (Tesseract OCR)', 'StructureAnalyzer', 'VersionManager', 'StatisticsService'],
+    architecture: ['PdfParser (iText)', 'Docx/ExcelParser (Apache POI)', 'EpubParser', 'ImageParser (Tesseract OCR)', 'StructureAnalyzer', 'VersionManager', 'StatisticsService'],
     details: 'Handles right-to-left Arabic extraction, detects columns, and manages the Reference Crud Service. Extracts footnotes and cross-links.'
   },
   {
-    id: 'S3', name: 'Auth Service', lang: 'Go',
+    id: 'S3', name: 'Auth Service', lang: 'Java Spring Boot',
     purpose: 'High-performance auth, JWT lifecycle, OAuth2, RBAC, MFA, API keys.',
     architecture: ['TokenService (JWT RS256)', 'OAuthService (Google, GitHub, Apple)', 'MfaService (TOTP)', 'RbacService', 'TokenBlacklist (Redis)', 'AuditLogger'],
     details: 'Issues 15min access & 7d refresh tokens. Hashes with bcrypt (cost 12). Strict RBAC checks. Emits audit logs to Kafka.'
   },
   {
-    id: 'S4', name: 'User Service', lang: 'Go',
+    id: 'S4', name: 'User Service', lang: 'Java Spring Boot',
     purpose: 'User profile management, preferences, learning progress, saved research.',
     architecture: ['ProfileService', 'PreferencesService', 'SavedResearchService', 'LearningProgressService', 'BookmarkService'],
     details: 'Stores JSON preferences (madhab, theme, diacritics toggle) in Redis/Postgres. Tracks curriculum progress.'
   },
   {
-    id: 'S5', name: 'Billing Service', lang: 'Go',
+    id: 'S5', name: 'Billing Service', lang: 'Java Spring Boot',
     purpose: 'Implements a coins-based economy for the platform, handles purchases, transactions, and micro-billing.',
     architecture: ['WalletService', 'LedgerService', 'PricingService', 'PaymentService (Stripe)', 'GrantService', 'DistributedLock', 'IdempotencyKey'],
     details: 'Enforces balance checks atomically before any chargeable request. Decouples monetary pricing from usage costs. Integrates with Stripe.'
   },
   {
-    id: 'S6', name: 'Query Service', lang: 'Go',
+    id: 'S6', name: 'Query Service', lang: 'Java Spring Boot',
     purpose: 'The orchestrator. Receives queries, calls Python RAG via gRPC, manages streaming.',
     architecture: ['QueryOrchestrator', 'CacheService (Redis + Qdrant)', 'StreamManager (SSE)', 'RetryHandler (Circuit Breaker)', 'MetricsCollector'],
     details: 'Checks exact Redis cache first, then Qdrant semantic cache (>0.95 sim), then calls Python RAG Engine via gRPC. Assembles response with citations.'
   },
   {
-    id: 'S7', name: 'Chat Service', lang: 'Go',
+    id: 'S7', name: 'Chat Service', lang: 'Java Spring Boot',
     purpose: 'Real-time chat, WebSocket connections, conversation memory.',
     architecture: ['ChatService', 'MessageService', 'WebSocketHub (Gorilla)', 'TitleGenerator (via RAG)', 'ConversationMemory'],
     details: 'Maintains last 20 messages in Redis for sliding window context. Broadcasts typing indicators. Persists to MongoDB.'
@@ -176,17 +178,812 @@ const rbacMatrix = [
 ];
 
 const roadmapPhases = [
-  { p: 1, title: 'Foundation', w: '1-4', tasks: ['Monorepo setup', 'Auth Service (Go)', 'Gateway Service (Go)', 'Python RAG extraction', 'gRPC contracts'] },
-  { p: 2, title: 'Core Services', w: '5-8', tasks: ['Query/Chat/User Services (Go)', 'Data Ingestion (Java)', 'Reference (.NET)', 'Integration tests'] },
-  { p: 3, title: 'Agent System', w: '9-12', tasks: ['Tool Registry (38 tools)', 'Supervisor routing', 'Enhanced RAG', 'Research & Verification Agents'] },
-  { p: 4, title: 'Content', w: '13-16', tasks: ['Kutub al-Sittah', 'Comparative Agent', 'Translation Agent', 'Narrator DB', 'Semantic Query Cache'] },
-  { p: 5, title: 'Frontend', w: '17-20', tasks: ['Next.js 15 + shadcn', 'Agent selector UI', 'Admin dashboard', 'PWA Offline mode'] },
-  { p: 6, title: 'Launch', w: '21-24', tasks: ['EKS Kubernetes', 'Load testing', 'Prometheus/Jaeger', 'LLM fallback chain'] },
-  { p: 7, title: 'CLI & MKS', w: '25-28', tasks: ['msk CLI', '.mishkat.zst compression', 'MKS Storage (S3/Postgres)', 'Incremental Edits & Deltas'] },
-  { p: 8, title: 'Skill Engine', w: '29-31', tasks: ['Skill YAML schema', 'Runner (Local/Docker)', 'Skill Registry', '10 official skills'] },
-  { p: 9, title: 'Mishkat-Hub', w: '32-35', tasks: ['Hub backend', 'Research Studio (Yjs)', 'Citation Manager', 'Forum + @mentions'] },
-  { p: 10, title: 'Automation', w: '36-38', tasks: ['n8n-style Canvas', 'Trigger/Logic Blocks', 'Pipeline Executor', 'Marketplace'] },
-  { p: 11, title: 'Adv Integration', w: '39-40', tasks: ['Citation Network', 'Fatwa/Debate Agents', 'Smart Notifications', 'Public Launch'] },
+  {
+    p: 1, title: 'Foundation', w: '1-4',
+    mainTasks: [
+      {
+        name: 'Monorepo & Infra Setup',
+        deps: ['None'],
+        subtasks: [
+          { 
+            name: 'Initialize GitHub Monorepo', deps: [],
+            subSubtasks: [
+              { name: 'Create base repository and README', est: '1d' },
+              { name: 'Setup Branch protection rules (main, dev)', est: '1d' },
+              { name: 'Configure GitHub Actions CI/CD template', est: '2d' }
+            ]
+          },
+          { 
+            name: 'Setup Docker Compose for all services', deps: ['Initialize GitHub Monorepo'],
+            subSubtasks: [
+              { name: 'Create docker-compose.yml with Redis & Postgres', est: '1d' },
+              { name: 'Add local Qdrant and MongoDB containers', est: '1d' },
+              { name: 'Configure network bridges and volumes', est: '1d' }
+            ]
+          },
+          { 
+            name: 'Configure Kubernetes (EKS) Dev Cluster', deps: ['Setup Docker Compose for all services'],
+            subSubtasks: [
+              { name: 'Provision EKS cluster via Terraform', est: '3d' },
+              { name: 'Install Nginx Ingress Controller', est: '1d' },
+              { name: 'Configure cluster autoscaler', est: '1d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Core API Gateway (Go)',
+        deps: ['Monorepo & Infra Setup'],
+        subtasks: [
+          { 
+            name: 'Implement Gin Gateway & Reverse Proxy', deps: [],
+            subSubtasks: [
+              { name: 'Setup Gin router and base health checks', est: '1d' },
+              { name: 'Implement httputil.ReverseProxy handler', est: '2d' },
+              { name: 'Create YAML-driven RouteConfig loader', est: '2d' }
+            ]
+          },
+          { 
+            name: 'Setup Rate Limiting & CORS', deps: ['Implement Gin Gateway & Reverse Proxy'],
+            subSubtasks: [
+              { name: 'Integrate Redis sliding window rate limiter', est: '2d' },
+              { name: 'Configure CORS middleware for mishkat.app origins', est: '1d' },
+              { name: 'Add RequestSanitizerMiddleware for input cleaning', est: '1d' }
+            ]
+          },
+          { 
+            name: 'JWT Middleware validation', deps: ['Setup Rate Limiting & CORS'],
+            subSubtasks: [
+              { name: 'Implement RS256 public key loading at startup', est: '1d' },
+              { name: 'Extract user_id and role from JWT claims', est: '1d' },
+              { name: 'Inject X-User-Id/Role headers for downstream', est: '1d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Auth Service (Java)',
+        deps: ['Monorepo & Infra Setup'],
+        subtasks: [
+          { 
+            name: 'Implement User Registration/Login', deps: [],
+            subSubtasks: [
+              { name: 'Create Postgres User/Role tables', est: '1d' },
+              { name: 'Implement bcrypt password hashing', est: '1d' },
+              { name: 'Generate 15min access & 7d refresh tokens', est: '2d' }
+            ]
+          },
+          { 
+            name: 'OAuth Integrations (Google, Apple)', deps: ['Implement User Registration/Login'],
+            subSubtasks: [
+              { name: 'Implement Google OAuth2 flow', est: '2d' },
+              { name: 'Implement Apple OAuth2 flow', est: '2d' },
+              { name: 'Link social accounts to existing emails', est: '1d' }
+            ]
+          },
+          { 
+            name: 'RBAC Enforcement Middleware', deps: ['Implement User Registration/Login'],
+            subSubtasks: [
+              { name: 'Define Guest, Student, Scholar, Admin roles', est: '1d' },
+              { name: 'Implement permission matrix checking', est: '2d' },
+              { name: 'Add TOTP MFA for Admin/Scholar roles', est: '2d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Python RAG Foundation',
+        deps: ['Monorepo & Infra Setup'],
+        subtasks: [
+          { 
+            name: 'Extract FastAPI RAG logic from monolithic app', deps: [],
+            subSubtasks: [
+              { name: 'Isolate QueryController logic into new module', est: '2d' },
+              { name: 'Separate Embedding calls from Retriever', est: '2d' },
+              { name: 'Write unit tests for isolated RAG components', est: '1d' }
+            ]
+          },
+          { 
+            name: 'Define gRPC contracts for Query Service', deps: ['Extract FastAPI RAG logic from monolithic app'],
+            subSubtasks: [
+              { name: 'Write .proto files for streaming RAG responses', est: '2d' },
+              { name: 'Generate Java, Go and Python gRPC stubs', est: '1d' },
+              { name: 'Implement gRPC server in Python RAG engine', est: '2d' }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    p: 2, title: 'Core Services', w: '5-8',
+    mainTasks: [
+      {
+        name: 'Query, Chat & User Services (Java)',
+        deps: ['Core API Gateway', 'Python RAG Foundation'],
+        subtasks: [
+          { 
+            name: 'Implement SSE Streaming for queries', deps: [],
+            subSubtasks: [
+              { name: 'Create StreamManager for Server-Sent Events', est: '2d' },
+              { name: 'Connect Java gRPC client to Python RAG server', est: '2d' },
+              { name: 'Implement Circuit Breaker for LLM failovers', est: '1d' }
+            ]
+          },
+          { 
+            name: 'WebSocket integration for Chat Service', deps: ['Implement SSE Streaming for queries'],
+            subSubtasks: [
+              { name: 'Setup Gorilla WebSocket Hub', est: '2d' },
+              { name: 'Manage Redis 20-message sliding window history', est: '2d' },
+              { name: 'Persist completed chats to MongoDB', est: '1d' }
+            ]
+          },
+          { 
+            name: 'Semantic Query Caching with Redis', deps: ['Implement SSE Streaming for queries'],
+            subSubtasks: [
+              { name: 'Check exact match in Redis before routing', est: '1d' },
+              { name: 'Check >0.95 similarity in Qdrant before generating', est: '2d' },
+              { name: 'Implement cache invalidation strategy', est: '1d' }
+            ]
+          },
+          { 
+            name: 'User profile and preference endpoints', deps: [],
+            subSubtasks: [
+              { name: 'Create preferences JSON schema (madhab, theme)', est: '1d' },
+              { name: 'Implement GET/PUT /api/v1/users/:id/preferences', est: '1d' },
+              { name: 'Cache active user preferences in Redis', est: '1d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Data Ingestion Service (Java)',
+        deps: ['None'],
+        subtasks: [
+          { 
+            name: 'Spring Boot batch configuration', deps: [],
+            subSubtasks: [
+              { name: 'Setup Spring Batch JobRepository', est: '1d' },
+              { name: 'Configure MongoDB and S3 writers', est: '2d' },
+              { name: 'Implement FailureHandler and retry logic', est: '2d' }
+            ]
+          },
+          { 
+            name: 'Implement Hadith JSON/CSV extractors', deps: ['Spring Boot batch configuration'],
+            subSubtasks: [
+              { name: 'Write JsonHadithReader for streaming large arrays', est: '2d' },
+              { name: 'Write CsvHadithReader with mapping config', est: '2d' },
+              { name: 'Implement ContentValidator and DuplicateValidator', est: '2d' }
+            ]
+          },
+          { 
+            name: 'Kafka event publishing for embeddings', deps: ['Implement Hadith JSON/CSV extractors'],
+            subSubtasks: [
+              { name: 'Setup KafkaProducer in Spring Boot', est: '1d' },
+              { name: 'Publish "ingestion.chunk_ready" events', est: '1d' },
+              { name: 'Implement Python KafkaConsumer to trigger embedding', est: '2d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Reference Service (Java)',
+        deps: ['None'],
+        subtasks: [
+          { 
+            name: 'Setup iText for PDF extraction', deps: [],
+            subSubtasks: [
+              { name: 'Implement PdfParser for text extraction', est: '2d' },
+              { name: 'Handle RTL Arabic text correctly', est: '2d' },
+              { name: 'Extract footnotes and images', est: '2d' }
+            ]
+          },
+          { 
+            name: 'Implement Catalog Search', deps: ['Setup iText for PDF extraction'],
+            subSubtasks: [
+              { name: 'Create Reference metadata models in MongoDB', est: '1d' },
+              { name: 'Implement CatalogSearchService', est: '2d' },
+              { name: 'Build REST endpoints for Reference CRUD', est: '2d' }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    p: 3, title: 'Agent System', w: '9-12',
+    mainTasks: [
+      {
+        name: 'LangGraph Orchestrator',
+        deps: ['Python RAG Foundation'],
+        subtasks: [
+          { 
+            name: 'Implement IntentClassifier', deps: [],
+            subSubtasks: [
+              { name: 'Train/prompt small LLM for intent detection', est: '2d' },
+              { name: 'Map intents to specialist agents', est: '1d' },
+              { name: 'Handle ambiguous intents with fallback', est: '1d' }
+            ]
+          },
+          { 
+            name: 'Setup Supervisor Routing logic', deps: ['Implement IntentClassifier'],
+            subSubtasks: [
+              { name: 'Define state schema for LangGraph', est: '1d' },
+              { name: 'Implement ExecutionPlanner for parallel/sequential tasks', est: '3d' },
+              { name: 'Create AgentRouter node', est: '2d' }
+            ]
+          },
+          { 
+            name: 'MemoryManager (Short/Long term)', deps: ['Setup Supervisor Routing logic'],
+            subSubtasks: [
+              { name: 'Implement short-term working memory per request', est: '1d' },
+              { name: 'Implement semantic memory hooks into Qdrant', est: '2d' },
+              { name: 'Implement episodic memory summarization', est: '2d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Tool Registry (38 Base Tools)',
+        deps: ['LangGraph Orchestrator'],
+        subtasks: [
+          { 
+            name: 'Integrate Web Search & Translation APIs', deps: [],
+            subSubtasks: [
+              { name: 'Implement web_search tool (Google/Bing API)', est: '1d' },
+              { name: 'Implement web_scrape tool (BeautifulSoup)', est: '1d' },
+              { name: 'Implement translate_text tool (DeepL/Google)', est: '1d' }
+            ]
+          },
+          { 
+            name: 'Implement internal retrieval tools', deps: ['Integrate Web Search & Translation APIs'],
+            subSubtasks: [
+              { name: 'Implement vector_search tool connecting to Qdrant', est: '2d' },
+              { name: 'Implement hadith_by_number strict lookup', est: '1d' },
+              { name: 'Implement hallucination_check validation tool', est: '2d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Specialized Agents',
+        deps: ['LangGraph Orchestrator', 'Tool Registry'],
+        subtasks: [
+          { 
+            name: 'Research Agent (Multi-source)', deps: [],
+            subSubtasks: [
+              { name: 'Define ReAct prompts for deep research', est: '2d' },
+              { name: 'Configure tool access (quran, hadith, web)', est: '1d' },
+              { name: 'Implement report formatting and citations', est: '2d' }
+            ]
+          },
+          { 
+            name: 'Verification Agent (Isnad)', deps: [],
+            subSubtasks: [
+              { name: 'Implement verify_isnad logic and prompts', est: '2d' },
+              { name: 'Connect to narrator database tool', est: '1d' },
+              { name: 'Implement output grading (Sahih/Daif)', est: '1d' }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    p: 4, title: 'Content & Knowledge', w: '13-16',
+    mainTasks: [
+      {
+        name: 'Kutub al-Sittah Ingestion',
+        deps: ['Data Ingestion Service'],
+        subtasks: [
+          { 
+            name: 'Process Bukhari & Muslim', deps: [],
+            subSubtasks: [
+              { name: 'Clean and format source JSON files', est: '2d' },
+              { name: 'Run through Spring Batch pipeline', est: '1d' },
+              { name: 'Verify embeddings in Qdrant', est: '1d' }
+            ]
+          },
+          { 
+            name: 'Process Sunan Abu Dawood, Tirmidhi, etc.', deps: ['Process Bukhari & Muslim'],
+            subSubtasks: [
+              { name: 'Source and clean text data', est: '3d' },
+              { name: 'Map numbering schemas accurately', est: '2d' },
+              { name: 'Run ingestion and embeddings', est: '2d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Advanced Agents',
+        deps: ['Specialized Agents', 'Kutub al-Sittah Ingestion'],
+        subtasks: [
+          { 
+            name: 'Comparative Agent (4 Madhabs)', deps: [],
+            subSubtasks: [
+              { name: 'Ingest primary Fiqh texts per madhab', est: '4d' },
+              { name: 'Design tabular output templates', est: '1d' },
+              { name: 'Test multi-madhab query resolution', est: '3d' }
+            ]
+          },
+          { 
+            name: 'Translation Agent (8 languages)', deps: [],
+            subSubtasks: [
+              { name: 'Implement language detection tool', est: '1d' },
+              { name: 'Configure prompts for accurate Islamic terminology', est: '2d' },
+              { name: 'Add transliteration fallback for AR terms', est: '2d' }
+            ]
+          },
+          { 
+            name: 'Fatwa & Tutor Agents', deps: ['Comparative Agent'],
+            subSubtasks: [
+              { name: 'Implement Fatwa drafting & scholar review flow', est: '2d' },
+              { name: 'Develop Tutor Agent with Socratic prompting', est: '2d' },
+              { name: 'Add difficulty scaling for Tutor learning paths', est: '1d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Narrator Database',
+        deps: ['Reference Service'],
+        subtasks: [
+          { 
+            name: 'Extract Rijal data from books', deps: [],
+            subSubtasks: [
+              { name: 'Parse Taqrib al-Tahdhib PDF', est: '3d' },
+              { name: 'Extract structured data (Name, Generation, Grade)', est: '2d' },
+              { name: 'Populate MongoDB Narrator collection', est: '1d' }
+            ]
+          },
+          { 
+            name: 'Map isnad chains to narrators', deps: ['Extract Rijal data from books'],
+            subSubtasks: [
+              { name: 'Implement fuzzy Arabic name matching', est: '3d' },
+              { name: 'Process existing hadiths to link narrators', est: '3d' },
+              { name: 'Expose narrator graphs to Verification Agent', est: '2d' }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    p: 5, title: 'Frontend & UI', w: '17-20',
+    mainTasks: [
+      {
+        name: 'Next.js 15 Web App',
+        deps: ['Query, Chat & User Services'],
+        subtasks: [
+          { 
+            name: 'Setup Shadcn UI and Tailwind v4', deps: [],
+            subSubtasks: [
+              { name: 'Initialize Next.js app router structure', est: '1d' },
+              { name: 'Configure theming and typography', est: '1d' },
+              { name: 'Implement base layout and navigation', est: '2d' }
+            ]
+          },
+          { 
+            name: 'Implement Chat Interface with SSE', deps: ['Setup Shadcn UI and Tailwind v4'],
+            subSubtasks: [
+              { name: 'Create React components for message streaming', est: '3d' },
+              { name: 'Parse and render markdown with citations', est: '2d' },
+              { name: 'Add typing indicators and error states', est: '1d' }
+            ]
+          },
+          { 
+            name: 'Offline-First PWA & Mobile Support', deps: ['Setup Shadcn UI and Tailwind v4'],
+            subSubtasks: [
+              { name: 'Configure next-pwa for service workers', est: '1d' },
+              { name: 'Implement IndexedDB for offline chat history', est: '2d' },
+              { name: 'Add Add-to-Homescreen prompt & mobile responsive fixes', est: '2d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Agent Interaction UI',
+        deps: ['Next.js 15 Web App'],
+        subtasks: [
+          { 
+            name: 'Agent Selector and Context visualizer', deps: [],
+            subSubtasks: [
+              { name: 'Build dropdown for manual agent selection', est: '1d' },
+              { name: 'Create visual execution plan timeline', est: '2d' },
+              { name: 'Show tool calls and intermediate steps', est: '2d' }
+            ]
+          },
+          { 
+            name: 'Multi-modal Input handling', deps: [],
+            subSubtasks: [
+              { name: 'Implement drag-and-drop file upload zone', est: '1d' },
+              { name: 'Integrate audio recording for voice queries', est: '2d' },
+              { name: 'Send files to appropriate parsers', est: '1d' }
+            ]
+          },
+          { 
+            name: 'Slash Command (/) & Context System', deps: ['Agent Selector and Context visualizer'],
+            subSubtasks: [
+              { name: 'Implement fuzzy-searchable command palette', est: '2d' },
+              { name: 'Add inline /insert and /export action handlers', est: '2d' },
+              { name: 'Integrate robust @ mentions for hadiths/users/skills', est: '2d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Admin Dashboard',
+        deps: ['Next.js 15 Web App', 'Auth Service'],
+        subtasks: [
+          { 
+            name: 'User & Role Management Module', deps: [],
+            subSubtasks: [
+              { name: 'Create user listing data table', est: '1d' },
+              { name: 'Implement role assignment forms', est: '1d' },
+              { name: 'Implement API key generation UI', est: '1d' }
+            ]
+          },
+          { 
+            name: 'System Analytics view', deps: [],
+            subSubtasks: [
+              { name: 'Fetch metrics from Prometheus', est: '2d' },
+              { name: 'Visualize query volume and latency charts', est: '2d' },
+              { name: 'Show active users and cache hit rates', est: '1d' }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    p: 6, title: 'Infrastructure & Launch Prep', w: '21-24',
+    mainTasks: [
+      {
+        name: 'Production Kubernetes (EKS)',
+        deps: ['All Core Services'],
+        subtasks: [
+          { 
+            name: 'Setup Helm charts for all services', deps: [],
+            subSubtasks: [
+              { name: 'Create base Helm chart templates', est: '2d' },
+              { name: 'Define resource limits and requests', est: '1d' },
+              { name: 'Configure readiness and liveness probes', est: '1d' }
+            ]
+          },
+          { 
+            name: 'Configure Auto-scaling (HPA)', deps: ['Setup Helm charts for all services'],
+            subSubtasks: [
+              { name: 'Setup Horizontal Pod Autoscaler for Go services', est: '1d' },
+              { name: 'Setup GPU node autoscaling for Python services', est: '2d' },
+              { name: 'Test scale up/down behavior under load', est: '2d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Observability Stack',
+        deps: ['Production Kubernetes (EKS)'],
+        subtasks: [
+          { 
+            name: 'Prometheus & Grafana dashboards', deps: [],
+            subSubtasks: [
+              { name: 'Deploy kube-prometheus-stack', est: '1d' },
+              { name: 'Create custom Go application dashboards', est: '2d' },
+              { name: 'Setup alertmanager for critical failures', est: '1d' }
+            ]
+          },
+          { 
+            name: 'Jaeger Distributed Tracing integration', deps: [],
+            subSubtasks: [
+              { name: 'Deploy Jaeger operator and instances', est: '1d' },
+              { name: 'Inject traceparents through API Gateway -> RAG', est: '2d' },
+              { name: 'Verify end-to-end trace visibility', est: '1d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Reliability Engineering',
+        deps: ['Python RAG Foundation'],
+        subtasks: [
+          { 
+            name: 'Implement LLM Fallback Chain', deps: [],
+            subSubtasks: [
+              { name: 'Write retry logic with exponential backoff', est: '1d' },
+              { name: 'Implement failover from Google -> Ollama -> Cohere', est: '2d' },
+              { name: 'Monitor and log failover events', est: '1d' }
+            ]
+          },
+          { 
+            name: 'End-to-end Load Testing', deps: [],
+            subSubtasks: [
+              { name: 'Write k6 test scripts for typical user flows', est: '2d' },
+              { name: 'Simulate 1000 concurrent websocket connections', est: '1d' },
+              { name: 'Identify and resolve bottlenecks', est: '3d' }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    p: 7, title: 'Billing & Economy', w: '25-28',
+    mainTasks: [
+      {
+        name: 'Billing Service (Java)',
+        deps: ['Core API Gateway', 'Auth Service'],
+        subtasks: [
+          { 
+            name: 'Implement Wallet & Ledger tables', deps: [],
+            subSubtasks: [
+              { name: 'Design ACID compliant PostgreSQL schemas', est: '1d' },
+              { name: 'Implement WalletService credit/debit logic', est: '2d' },
+              { name: 'Implement Ledger immutable logging', est: '1d' }
+            ]
+          },
+          { 
+            name: 'Stripe Payment Integration', deps: ['Implement Wallet & Ledger tables'],
+            subSubtasks: [
+              { name: 'Setup Stripe webhook listeners', est: '2d' },
+              { name: 'Implement coin package purchase endpoints', est: '2d' },
+              { name: 'Handle refund and dispute edge cases', est: '2d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Coin-based Enforcement',
+        deps: ['Billing Service', 'Query Service'],
+        subtasks: [
+          { 
+            name: 'Gateway CoinCheck Middleware', deps: [],
+            subSubtasks: [
+              { name: 'Cache user balance in Redis', est: '1d' },
+              { name: 'Intercept and check balance before routing', est: '2d' },
+              { name: 'Return 402 Payment Required correctly', est: '1d' }
+            ]
+          },
+          { 
+            name: 'PricingService configuration for individual agents', deps: [],
+            subSubtasks: [
+              { name: 'Define coin costs for all tools and agents', est: '1d' },
+              { name: 'Deduct coins atomically post-execution', est: '2d' },
+              { name: 'Implement auto-refund on upstream failures', est: '2d' }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    p: 8, title: 'CLI & MKS Ecosystem', w: '29-32',
+    mainTasks: [
+      {
+        name: 'msk CLI Tool',
+        deps: ['Core API Gateway'],
+        subtasks: [
+          { 
+            name: 'CLI Auth & Query commands', deps: [],
+            subSubtasks: [
+              { name: 'Implement msk auth login flow', est: '2d' },
+              { name: 'Implement msk query and JSON output formatting', est: '2d' },
+              { name: 'Publish cross-platform binaries (GoReleaser)', est: '1d' }
+            ]
+          },
+          { 
+            name: 'Agent runner via CLI', deps: ['CLI Auth & Query commands'],
+            subSubtasks: [
+              { name: 'Implement msk agent run chain logic', est: '2d' },
+              { name: 'Support local file piping (stdin/stdout)', est: '1d' },
+              { name: 'Handle streaming responses in terminal', est: '2d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Mishkat Knowledge Sync (MKS)',
+        deps: ['msk CLI Tool', 'Data Ingestion Service'],
+        subtasks: [
+          { 
+            name: 'S3/Postgres Storage architecture for MKS', deps: [],
+            subSubtasks: [
+              { name: 'Design collection versioning schema', est: '2d' },
+              { name: 'Implement package export to S3', est: '2d' },
+              { name: 'Build msk sync pull functionality', est: '2d' }
+            ]
+          },
+          { 
+            name: 'Incremental Edits & Deltas propagation mechanism', deps: ['S3/Postgres Storage architecture for MKS'],
+            subSubtasks: [
+              { name: 'Track individual hadith changes over time', est: '2d' },
+              { name: 'Generate diffs between snapshot versions', est: '2d' },
+              { name: 'Implement msk sync update for delta application', est: '3d' }
+            ]
+          },
+          { 
+            name: '.mishkat.zst binary compression support', deps: [],
+            subSubtasks: [
+              { name: 'Integrate zstd compression libraries', est: '1d' },
+              { name: 'Format vector and metadata into binary blobs', est: '2d' },
+              { name: 'Test decompression performance on edge devices', est: '1d' }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    p: 9, title: 'Advanced Workflows & Hub', w: '33-36',
+    mainTasks: [
+      {
+        name: 'Automation Canvas',
+        deps: ['Agent System'],
+        subtasks: [
+          { 
+            name: 'Visual n8n-style drag-and-drop DAG builder', deps: [],
+            subSubtasks: [
+              { name: 'Implement React Flow for node visualization', est: '3d' },
+              { name: 'Create trigger and action node UI components', est: '2d' },
+              { name: 'Generate JSON graph representation', est: '1d' }
+            ]
+          },
+          { 
+            name: 'Java DAG Executor Service Implementation', deps: ['Visual n8n-style drag-and-drop DAG builder'],
+            subSubtasks: [
+              { name: 'Parse JSON graph into execution order', est: '2d' },
+              { name: 'Implement parallel/sequential node runners', est: '3d' },
+              { name: 'Handle node failures and retries', est: '2d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Skill Engine',
+        deps: ['Automation Canvas'],
+        subtasks: [
+          { 
+            name: 'YAML Schema Parser for external skills', deps: [],
+            subSubtasks: [
+              { name: 'Define strict YAML schema for steps', est: '1d' },
+              { name: 'Implement Java parser and validator', est: '2d' },
+              { name: 'Map skill steps to internal tools', est: '2d' }
+            ]
+          },
+          { 
+            name: 'Skill Registry & Publishing workflow', deps: ['YAML Schema Parser for external skills'],
+            subSubtasks: [
+              { name: 'Create database tables for Skill metadata', est: '1d' },
+              { name: 'Implement skill publishing and versioning API', est: '2d' },
+              { name: 'Build UI for browsing public skills', est: '2d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Mishkat-Hub',
+        deps: ['Frontend & UI'],
+        subtasks: [
+          { 
+            name: 'Research Studio with Yjs Co-authoring', deps: [],
+            subSubtasks: [
+              { name: 'Integrate Tiptap editor with Yjs', est: '3d' },
+              { name: 'Setup Hocuspocus WebSocket server for sync', est: '2d' },
+              { name: 'Implement real-time cursors and changes', est: '2d' }
+            ]
+          },
+          { 
+            name: 'Citation Network graphing interface', deps: [],
+            subSubtasks: [
+              { name: 'Generate network data from hadith references', est: '2d' },
+              { name: 'Implement Force-directed graph visualization', est: '2d' },
+              { name: 'Add node expansion and details view', est: '2d' }
+            ]
+          },
+          { 
+            name: 'Community Forum & @mentions System', deps: [],
+            subSubtasks: [
+              { name: 'Implement discussion threads and replies', est: '2d' },
+              { name: 'Parse @mentions for users and specific hadiths', est: '2d' },
+              { name: 'Build notification system for mentions', est: '1d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Smart Notifications Service',
+        deps: ['Agent System', 'Mishkat-Hub'],
+        subtasks: [
+          { 
+            name: 'WebSocket & Push Notification Infra', deps: [],
+            subSubtasks: [
+              { name: 'Setup cross-platform Push API (FCM/APNs)', est: '2d' },
+              { name: 'Implement real-time in-app notification bell', est: '1d' },
+              { name: 'Design email fallback digest templates', est: '2d' }
+            ]
+          },
+          { 
+            name: 'Event-driven Notification triggers', deps: ['WebSocket & Push Notification Infra'],
+            subSubtasks: [
+              { name: 'Listen for @mentions and Scholar review requests', est: '1d' },
+              { name: 'Send alerts for long-running agent completion', est: '1d' },
+              { name: 'User opt-in/opt-out preference management', est: '1d' }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    p: 10, title: 'Final Polish & Public Launch', w: '37-40',
+    mainTasks: [
+      {
+        name: 'System Optimization',
+        deps: ['Observability Stack'],
+        subtasks: [
+          { 
+            name: 'Cache Tuning (Redis/Qdrant)', deps: [],
+            subSubtasks: [
+              { name: 'Analyze cache hit rates in production', est: '2d' },
+              { name: 'Adjust TTLs and eviction policies', est: '1d' },
+              { name: 'Optimize Qdrant HNSW parameters', est: '2d' }
+            ]
+          },
+          { 
+            name: 'Database Index Optimization', deps: [],
+            subSubtasks: [
+              { name: 'Run Postgres EXPLAIN on slow queries', est: '2d' },
+              { name: 'Add composite indexes for common filters', est: '1d' },
+              { name: 'Setup database vacuuming and maintenance jobs', est: '1d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Security Audit',
+        deps: ['All Modules'],
+        subtasks: [
+          { 
+            name: 'Penetration Testing', deps: [],
+            subSubtasks: [
+              { name: 'Conduct automated vulnerability scans', est: '1d' },
+              { name: 'Manual testing of JWT and CORS boundaries', est: '2d' },
+              { name: 'Resolve identified critical/high issues', est: '3d' }
+            ]
+          },
+          { 
+            name: 'RBAC Policy verification', deps: [],
+            subSubtasks: [
+              { name: 'Write integration tests for all roles', est: '2d' },
+              { name: 'Ensure tenant isolation is strictly enforced', est: '2d' },
+              { name: 'Audit admin endpoint access logs', est: '1d' }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Public Release',
+        deps: ['Security Audit'],
+        subtasks: [
+          { 
+            name: 'Marketing & Documentation finalization', deps: [],
+            subSubtasks: [
+              { name: 'Publish API documentation (Swagger/Redoc)', est: '2d' },
+              { name: 'Write user guides and tutorials', est: '3d' },
+              { name: 'Prepare launch announcement content', est: '2d' }
+            ]
+          },
+          { 
+            name: 'General Availability (GA) Launch', deps: ['Marketing & Documentation finalization'],
+            subSubtasks: [
+              { name: 'Final database migrations and backups', est: '1d' },
+              { name: 'Flip DNS to production clusters', est: '1d' },
+              { name: 'Monitor error rates closely post-launch', est: '3d' }
+            ]
+          }
+        ]
+      }
+    ]
+  }
 ];
 
 // ==========================================
@@ -505,7 +1302,7 @@ $ msk admin cache flush`} />
       {/* Canvas Card */}
       <Card title="Automation Canvas" icon={Workflow}>
         <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
-          Visual n8n-style drag-and-drop pipeline builder. Runs on a dedicated Go DAG executor service. Automates tasks like Daily Hadith digests or Fatwa alerts.
+          Visual n8n-style drag-and-drop pipeline builder. Runs on a dedicated Java DAG executor service. Automates tasks like Daily Hadith digests or Fatwa alerts.
         </p>
         <ul className="space-y-2 text-sm text-zinc-300">
           <li className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> <strong className="text-zinc-100">Triggers:</strong> Schedule, Webhook, Event (New Fatwa)</li>
@@ -603,51 +1400,155 @@ steps:
   </div>
 );
 
+// ==========================================
+// ROADMAP VIEW COMPONENTS
+// ==========================================
+
+const RoadmapSubSubtask = ({ task }) => {
+  return (
+    <div className="flex items-center justify-between text-sm py-1.5 pl-6 border-l-2 border-zinc-800 ml-5 hover:bg-zinc-800/30 transition-colors group rounded-r-md">
+      <div className="flex items-center gap-2 text-zinc-400">
+        <div className="w-1.5 h-1.5 rounded-full bg-zinc-600 group-hover:bg-orange-500 transition-colors"></div>
+        <span>{task.name}</span>
+      </div>
+      <div className="px-2">
+        <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+          est: {task.est}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+const RoadmapSubtask = ({ subtask }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  return (
+    <div className="mb-2 last:mb-0">
+      <div 
+        className="flex items-start gap-3 relative cursor-pointer hover:bg-zinc-800/20 p-2 rounded-lg transition-colors group"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="absolute -left-[27px] top-4 w-[20px] h-px bg-zinc-800"></div>
+        <div className="mt-1 flex-shrink-0 text-zinc-600 group-hover:text-cyan-500 transition-colors">
+          {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-medium text-zinc-300 group-hover:text-zinc-100 transition-colors">{subtask.name}</p>
+          {subtask.deps && subtask.deps.length > 0 && (
+            <div className="mt-1 flex gap-2">
+              {subtask.deps.map(d => (
+                <span key={d} className="text-[9px] text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">↳ dep: {d}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {isOpen && subtask.subSubtasks && (
+        <div className="mt-1 mb-3 pr-2">
+          {subtask.subSubtasks.map((sst, i) => (
+            <RoadmapSubSubtask key={i} task={sst} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const RoadmapMainTask = ({ task }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative mb-6 last:mb-0">
+      <div className="absolute left-3.5 top-8 bottom-0 w-px bg-zinc-800"></div>
+      
+      <div 
+        className="flex items-start gap-3 mb-2 relative z-10 cursor-pointer group"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="w-7 h-7 mt-0.5 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700 shadow-sm group-hover:border-orange-500/50 transition-colors">
+          <Workflow size={14} className="text-orange-500" />
+        </div>
+        <div className="flex-1 bg-zinc-800/20 p-3 rounded-lg border border-zinc-800/50 group-hover:border-zinc-700 transition-colors">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              {isOpen ? <ChevronDown size={16} className="text-zinc-500" /> : <ChevronRight size={16} className="text-zinc-500" />}
+              <h4 className="font-semibold text-zinc-200 text-base">{task.name}</h4>
+            </div>
+            {task.deps && task.deps.length > 0 && task.deps[0] !== 'None' && (
+              <div className="flex gap-2 items-center flex-wrap">
+                <span className="text-[10px] text-zinc-500 uppercase">Depends on:</span>
+                {task.deps.map(d => (
+                  <span key={d} className="px-2 py-0.5 rounded text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700">{d}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {isOpen && (
+        <div className="mt-3 pl-2">
+          {task.subtasks.map((sub, sIdx) => (
+            <RoadmapSubtask key={sIdx} subtask={sub} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const RoadmapPhaseNode = ({ phase }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-900/30">
+      <div 
+        className="flex justify-between items-center bg-zinc-800/50 p-4 border-b border-zinc-800 cursor-pointer hover:bg-zinc-800/70 transition-colors"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center gap-4">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border shadow-sm transition-colors
+            ${isOpen ? 'bg-orange-500 text-white border-orange-400' : 'bg-orange-500/20 text-orange-500 border-orange-500/30'}`}
+          >
+            P{phase.p}
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-zinc-100">{phase.title}</h3>
+            <span className="text-xs text-zinc-500 font-mono tracking-wider">Weeks {phase.w}</span>
+          </div>
+        </div>
+        <div className="text-zinc-500">
+          {isOpen ? <ChevronDown size={24} /> : <ChevronRight size={24} />}
+        </div>
+      </div>
+      
+      {isOpen && (
+        <div className="p-5">
+          {phase.mainTasks.map((task, idx) => (
+            <RoadmapMainTask key={idx} task={task} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const RoadmapView = () => (
   <div className="max-w-5xl mx-auto animate-in fade-in duration-500">
     <Card>
       <div className="p-6 border-b border-zinc-800 bg-zinc-800/30 flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-zinc-100">40-Week Engineering Roadmap</h2>
-          <p className="text-sm text-zinc-500">From Foundation to Public Launch</p>
+          <p className="text-sm text-zinc-500">Sprint-Ready Execution Plan (Click phases to expand)</p>
         </div>
-        <Badge color="bg-orange-500/10 text-orange-400 border border-orange-500/20">11 Phases</Badge>
+        <Badge color="bg-orange-500/10 text-orange-400 border border-orange-500/20">{roadmapPhases.length} Phases</Badge>
       </div>
-      <div className="p-6 overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b-2 border-zinc-800">
-              <th className="py-3 text-xs font-bold text-zinc-500 uppercase">Phase</th>
-              <th className="py-3 text-xs font-bold text-zinc-500 uppercase">Focus</th>
-              <th className="py-3 text-xs font-bold text-zinc-500 uppercase">Timeline</th>
-              <th className="py-3 text-xs font-bold text-zinc-500 uppercase">Key Deliverables</th>
-            </tr>
-          </thead>
-          <tbody>
-            {roadmapPhases.map((phase, i) => (
-              <tr key={i} className="border-b border-zinc-800 hover:bg-zinc-800/50 transition-colors">
-                <td className="py-4 align-top w-16 font-bold text-orange-500 text-lg">
-                  {phase.p}
-                </td>
-                <td className="py-4 align-top w-48 font-semibold text-zinc-200">
-                  {phase.title}
-                </td>
-                <td className="py-4 align-top w-24">
-                  <Badge>Wk {phase.w}</Badge>
-                </td>
-                <td className="py-4 align-top">
-                  <div className="flex flex-wrap gap-2">
-                    {phase.tasks.map((t, idx) => (
-                      <span key={idx} className="flex items-center gap-1 text-xs bg-zinc-900 border border-zinc-700 text-zinc-300 px-2 py-1 rounded shadow-sm">
-                        <Check size={12} className="text-emerald-500" /> {t}
-                      </span>
-                    ))}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="p-6 space-y-4">
+        {roadmapPhases.map((phase, i) => (
+          <RoadmapPhaseNode key={i} phase={phase} />
+        ))}
       </div>
     </Card>
     
@@ -730,6 +1631,83 @@ const FilesView = () => {
     </div>
   );
 };
+
+// ==========================================
+// SPRINTS VIEW COMPONENT
+// ==========================================
+
+const SprintsView = () => {
+  return (
+    <div className="max-w-6xl mx-auto animate-in fade-in duration-500">
+      <Card>
+        <div className="p-6 border-b border-zinc-800 bg-zinc-800/30 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-zinc-100">Granular Sprint Backlog</h2>
+            <p className="text-sm text-zinc-500">Atomic, Jira-style task breakdown for all 40 weeks ("from nothing until it works").</p>
+          </div>
+          <Badge color="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">{sprintsData.length} Sprints</Badge>
+        </div>
+        
+        <div className="p-6 grid grid-cols-1 gap-8">
+          {sprintsData.map((sprint, i) => (
+            <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+              <div className="bg-zinc-800/60 p-4 border-b border-zinc-800 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded bg-zinc-800 flex items-center justify-center font-bold text-sm text-cyan-400 border border-zinc-700">
+                    S{sprint.sprint}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-zinc-100">{sprint.title}</h3>
+                    <div className="text-xs text-zinc-500">{sprint.weeks}</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-0">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-zinc-950/50 text-xs uppercase text-zinc-500 border-b border-zinc-800">
+                    <tr>
+                      <th className="px-6 py-3 font-medium">Ticket ID</th>
+                      <th className="px-6 py-3 font-medium">Task / Objective</th>
+                      <th className="px-6 py-3 font-medium">Type</th>
+                      <th className="px-6 py-3 font-medium">Est.</th>
+                      <th className="px-6 py-3 font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800/50">
+                    {sprint.tasks.map((task, j) => (
+                      <tr key={j} className="hover:bg-zinc-800/20 transition-colors">
+                        <td className="px-6 py-3 font-mono text-xs text-orange-400 whitespace-nowrap">
+                          {task.id}
+                        </td>
+                        <td className="px-6 py-3 text-zinc-300 font-medium">
+                          {task.title}
+                        </td>
+                        <td className="px-6 py-3">
+                          <span className="px-2 py-1 bg-zinc-800 border border-zinc-700 text-zinc-400 text-[10px] rounded uppercase tracking-wider">
+                            {task.type}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3 text-zinc-400 text-xs font-mono">
+                          {task.est}
+                        </td>
+                        <td className="px-6 py-3">
+                          <span className={`px-2 py-1 text-[10px] rounded uppercase font-bold ${task.status === 'Done' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : task.status === 'In Progress' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-zinc-800 text-zinc-500 border border-zinc-700'}`}>
+                            {task.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+};
   
 // ==========================================
 // MAIN LAYOUT (Horizontal Nav / No Sidebar)
@@ -744,6 +1722,7 @@ export default function App() {
     { id: 'agents', label: 'Agents & Tools', icon: Bot },
     { id: 'advanced', label: 'Advanced Features', icon: Terminal },
     { id: 'roadmap', label: 'Roadmap', icon: Route },
+    { id: 'sprints', label: 'Sprints', icon: ListChecks },
     { id: 'files', label: 'Raw Blueprints', icon: FileText },
   ];
 
@@ -754,6 +1733,7 @@ export default function App() {
       case 'agents': return <AgentsToolsView />;
       case 'advanced': return <AdvancedFeaturesView />;
       case 'roadmap': return <RoadmapView />;
+      case 'sprints': return <SprintsView />;
       case 'files': return <FilesView />;
       default: return <ArchitectureView />;
     }

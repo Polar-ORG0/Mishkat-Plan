@@ -47,17 +47,17 @@ flowchart TD
     end
 
     subgraph Auth["🔐 Auth Layer"]
-        AUTH_SVC[Auth Service — Go]
+        AUTH_SVC[Auth Service — Java]
         PG[(PostgreSQL)]
         REDIS_AUTH[(Redis Sessions)]
     end
 
     subgraph Core["⚙️ Core Services"]
-        QS[Query Service — Go]
-        CS[Chat Service — Go]
+        QS[Query Service — Java]
+        CS[Chat Service — Java]
         US[User Service — Go]
         DS[Data Ingestion — Java Spring]
-        RS[Reference Service — .NET 8]
+        RS[Reference Service — Java 21]
     end
 
     subgraph AI["🧠 AI Layer — Python"]
@@ -130,7 +130,7 @@ Each language is chosen for its **strongest domain** — not for uniformity.
 | **Chat Service** | **Go** | Gin + Gorilla WS | Native goroutines for WebSocket/SSE streaming |
 | **Query Service** | **Go** | Gin + gRPC client | Orchestrates AI calls, handles backpressure, streams tokens |
 | **Data Ingestion** | **Java** | Spring Boot 3 + Spring Batch | Enterprise batch processing, scheduling, transactional ETL |
-| **Reference Service** | **.NET 8** | ASP.NET Minimal API | iText7 for PDF, NPOI for Excel, rich document parsing |
+| **Reference Service** | **Java 21** | Spring Web | iText for PDF, Apache POI for Excel, rich document parsing |
 | **RAG Engine** | **Python** | FastAPI + LangGraph | Keep existing logic + LangChain + HuggingFace + agent framework |
 | **Embedding Service** | **Python** | FastAPI + gRPC | Model inference, batch embedding |
 | **Supervisor Agent** | **Python** | LangGraph | Multi-agent orchestration, tool routing |
@@ -177,7 +177,7 @@ message QueryRequest {
 sequenceDiagram
     participant Client
     participant GW as Gateway Service (Go)
-    participant Auth as Auth Service (Go)
+    participant Auth as Auth Service (Java)
     participant Redis
     participant PG as PostgreSQL
 

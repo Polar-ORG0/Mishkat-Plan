@@ -101,9 +101,9 @@ flowchart LR
         API[External APIs]
     end
 
-    subgraph Pipeline["⚙️ Processing (Java Spring Batch + .NET)"]
+    subgraph Pipeline["⚙️ Processing (Java Spring Batch)"]
         UPLOAD[Upload to S3]
-        PARSE[Document Parser — .NET]
+        PARSE[Document Parser — Java]
         VALIDATE[Schema Validation]
         CLEAN_P[Arabic Cleaning]
         CHUNK_P[Chunking — 500char/80overlap]
@@ -342,7 +342,7 @@ mishkat-platform/
 │   ├── query-service/          # Go — Query orchestration, streaming
 │   ├── chat-service/           # Go — WebSocket, chat management
 │   ├── data-service/           # Java Spring Boot — ETL, batch ingestion
-│   ├── reference-service/      # .NET 8 — Document parsing, reference management
+│   ├── reference-service/      # Java 21 — Document parsing, reference management
 │   └── rag-engine/             # Python — Agents, tools, RAG pipeline, embedding
 │       ├── agents/
 │       │   ├── supervisor.py
@@ -388,7 +388,7 @@ mishkat-platform/
 
 ### Phase 1: Foundation (Weeks 1-4)
 - [ ] Set up monorepo with build tooling
-- [ ] **Auth Service (Go)** — JWT RS256 + RBAC + OAuth2
+- [ ] **Auth Service (Java)** — JWT RS256 + RBAC + OAuth2
 - [ ] **Gateway Service (Go)** — reverse proxy, rate limiting, JWT validation, CORS, request logging
 - [ ] PostgreSQL (users/roles) + Redis (sessions/cache)
 - [ ] Extract Python RAG into standalone `rag-engine` service
@@ -401,7 +401,7 @@ mishkat-platform/
 - [ ] **Chat Service (Go)** — WebSocket, chat/message CRUD
 - [ ] **User Service (Go)** — profile, preferences
 - [ ] **Data Ingestion Service (Java Spring)** — batch pipeline + Kafka
-- [ ] **Reference Service (.NET)** — CRUD + PDF parser
+- [ ] **Reference Service (Java)** — CRUD + PDF parser
 - [ ] Redis caching for RAG responses
 - [ ] Integration tests across services
 - [ ] Staging deployment (ECS Fargate)
@@ -451,7 +451,7 @@ mishkat-platform/
 
 1. **Cloud provider?** AWS (recommended) / GCP / Azure
 2. **Monorepo or multi-repo?** Monorepo recommended for team <5
-3. **Start Phase 1 now?** Auth Service (Go) + API Gateway
+3. **Start Phase 1 now?** Auth Service (Java) + API Gateway
 4. **LLM primary?** Keep Ollama or switch to Google Gemini as primary?
 5. **Budget range?** Affects managed services vs self-hosted
 6. **Team size?** Solo / 2-3 / 5+ developers
