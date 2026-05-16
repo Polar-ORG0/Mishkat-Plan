@@ -128,11 +128,13 @@ const agents = [
 ];
 
 const advancedAgents = [
-  { name: '🔗 Citation Network Agent', desc: 'Builds knowledge graphs of hadith citations. Exportable to DOT/GraphML.' },
-  { name: '📜 Fatwa Generation Agent', desc: 'Drafts preliminary responses across madhabs. Always marked "Awaiting Scholar Review".' },
-  { name: '🗣️ Debate Agent', desc: 'Formal munazara structure. Position A vs B, tarjih (weighing), and recommended actions.' },
-  { name: '📦 Data Lineage Agent', desc: 'Tracks journey from raw file -> parser -> chunk -> vector -> approved by.' },
-  { name: '📊 Meta-Analysis Agent', desc: 'Hub feature: Systematic reviews, statistical summaries, PRISMA flow diagrams.' },
+  { name: '🔗 Citation Network Agent', desc: 'Constructs force-directed knowledge graphs mapping every hadith citation, cross-narrator reference, and thematic cluster across the entire corpus. Outputs to DOT, GraphML, and interactive D3 visualizations. Researchers can trace how a single narration propagated across centuries of Islamic scholarship — revealing transmission chains, rediscovery patterns, and scholarly consensus formation in real time.' },
+  { name: '📜 Fatwa Generation Agent', desc: 'Drafts structured preliminary fatwa responses by synthesizing evidence from all four madhabs, grading source strength (Sahih → Da\'if → Mawquf), and applying Usul al-Fiqh methodology. Every output is explicitly tagged "Draft — Awaiting Scholar Review", routed to the Scholar Review Queue, and cannot be published without human approval. Enables muftis to process high-volume recurring questions at 10x speed without compromising authority.' },
+  { name: '🗣️ Debate Agent (Munazara Engine)', desc: 'Structures formal Islamic scholarly debates using classical munazara methodology: Muda\'i (claimant) vs Mu\'tarid (objector), with structured tarjih (comparative weighing) of proofs. Outputs verdict tables showing which daleel outweighs the other and why. Used by researchers for comparative theology, by educators for teaching critical thinking, and by scholars to stress-test their positions against documented counterarguments.' },
+  { name: '📦 Data Lineage & Provenance Agent', desc: 'Provides full audit trails for every piece of knowledge in the system: raw source file → parser → chunker → embedder → Qdrant collection → who reviewed it → when it was last updated. Researchers can verify exactly which edition of Sahih al-Bukhari a hadith came from, which translator\'s variant was used, and the complete change history. Ensures academic-grade reproducibility for any published research.' },
+  { name: '📊 Meta-Analysis & Systematic Review Agent', desc: 'Performs academic-grade systematic literature reviews across the entire hadith corpus and linked scholarly commentary. Outputs PRISMA-compliant flow diagrams, statistical frequency analyses, thematic heat maps, and structured synthesis tables. Enables researchers to identify consensus, minority opinions, and underdiscussed topics across hundreds of classical sources — work that previously required months of manual scholarship.' },
+  { name: '🧬 Isnad Graph Reconstruction Agent', desc: 'Reconstructs complete isnads as directed acyclic graphs (DAGs), automatically resolving narrator name variants (e.g. Abu Hurayra\'s 30+ recorded aliases) using fuzzy Arabic NLP matching. Surfaces weak links, missing generations (inqita\'), and tadlis patterns. Cross-references with the Narrator DB (sourced from Taqrib al-Tahdhib) to assign confidence scores to each chain link — giving hadith scholars a precision tool that replaces weeks of manual rijal research.' },
+  { name: '📐 Methodology Tracker Agent', desc: 'Tracks and enforces research methodology consistency across a scholar\'s entire project. Records which usul principles were applied, which madhab\'s qawa\'id were used for analogical reasoning, and flags any internal contradictions between different sections of a multi-part fatwa or research paper. Outputs a methodology audit log that can be attached to any academic submission for peer review.' },
 ];
 
 const allTools = [
@@ -1272,218 +1274,492 @@ const AgentsToolsView = () => (
 
 const AdvancedFeaturesView = () => (
   <div className="space-y-8 animate-in fade-in duration-500">
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      
-      {/* CLI Card */}
-      <Card title="Mishkat CLI (msk)" icon={Terminal}>
-        <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
-          The control plane outside the browser. Built in Go. Unix-philosophy, offline-capable via compressed snapshots. Uses zstd compression for vectors and JSONL.
-        </p>
-        <CodeBlock title="Terminal Commands" code={`$ msk auth login
-$ msk query "حكم الزواج" --format json | jq '.sources[].grade'
-$ msk knowledge snapshot create --ref bukhari
-$ msk agent run chain research,verify --output ./report.md
-$ msk admin cache flush`} />
-      </Card>
 
-      {/* MKS Card */}
-      <Card title="Mishkat Knowledge Sync (MKS)" icon={RefreshCw}>
-        <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
-          Self-hosted knowledge distribution and sync system. Pull collections, push incremental edits (deltas), and sync across universities. NOT a code version control system.
-        </p>
-        <div className="bg-zinc-950 p-4 rounded-lg border border-zinc-800 text-sm font-mono space-y-2">
-          <div className="flex justify-between"><span className="text-zinc-500">msk sync pull bukhari</span><span className="text-orange-400">Download package</span></div>
-          <div className="flex justify-between"><span className="text-zinc-500">msk sync edit</span><span className="text-orange-400">Incremental hadith fix</span></div>
-          <div className="flex justify-between"><span className="text-zinc-500">msk sync update</span><span className="text-orange-400">Fetch latest deltas</span></div>
-          <div className="flex justify-between"><span className="text-zinc-500">msk sync snapshot create</span><span className="text-orange-400">Backup KB state</span></div>
+    {/* Hero Banner */}
+    <div className="bg-gradient-to-br from-orange-500/10 via-zinc-900 to-zinc-900 border border-orange-500/30 rounded-2xl p-6">
+      <div className="flex items-start gap-4">
+        <div className="p-3 bg-orange-500/20 rounded-xl shrink-0">
+          <Zap size={28} className="text-orange-400" />
         </div>
-      </Card>
-
-      {/* Canvas Card — Full MSA description */}
-      <Card title="Mishkat Automation Canvas (MSA) — Islamic App Builder" icon={Workflow}>
-        <p className="text-sm text-zinc-400 mb-3 leading-relaxed">
-          MSA is a <strong className="text-zinc-100">no-code Islamic app builder and Backend-as-a-Service platform</strong>. Anyone — developer, scholar, mosque admin — can visually connect blocks to build a fully functional Islamic app or backend API, with <strong className="text-zinc-100">zero backend or AI knowledge required</strong>.
-        </p>
-
-        {/* Core value prop */}
-        <div className="bg-orange-500/5 border border-orange-500/20 rounded-lg p-3 mb-4">
-          <p className="text-xs text-orange-300 font-semibold uppercase tracking-wider mb-1">What MSA Really Is</p>
-          <p className="text-sm text-zinc-300 leading-relaxed">
-            Build a complete app frontend (React, Flutter, Next.js) and use a <strong className="text-zinc-100">single Webhook block as your entire backend</strong>. POST your request → MSA runs the pipeline → returns structured JSON. No server. No AI code. No deployment.
+        <div>
+          <h2 className="text-xl font-bold text-zinc-100 mb-1">Mishkat Hub — The Absolute Toolkit for Islamic Research</h2>
+          <p className="text-sm text-zinc-400 leading-relaxed max-w-4xl">
+            MSH is not a chat tool. It is a <strong className="text-orange-300">fully integrated research operating system</strong> — combining a scholar-grade AI engine, 
+            institutional-grade data pipelines, a no-code automation platform, a real-time collaborative research studio, 
+            a knowledge sync protocol, and a CLI control plane — all purpose-built for Islamic scholarship. 
+            What took research teams months now takes minutes.
           </p>
+          <div className="flex flex-wrap gap-2 mt-3">
+            {['🎓 Researchers', '⚖️ Scholars & Muftis', '🏛️ Universities & Institutes', '💻 Developers', '🕌 Mosques & NGOs', '📖 Students'].map((tag, i) => (
+              <span key={i} className="text-xs px-2.5 py-1 bg-orange-500/10 border border-orange-500/20 text-orange-300 rounded-full">{tag}</span>
+            ))}
+          </div>
         </div>
-
-        {/* Three roles */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {[
-            { label: 'For Scholars', desc: 'Build automated research & fatwa workflows visually', color: 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400' },
-            { label: 'For Devs', desc: 'Use as Islamic knowledge API backend — one webhook call', color: 'border-blue-500/30 bg-blue-500/5 text-blue-400' },
-            { label: 'For Anyone', desc: 'No code needed — drag blocks, hit Run, publish to marketplace', color: 'border-amber-500/30 bg-amber-500/5 text-amber-400' },
-          ].map((r, i) => (
-            <div key={i} className={`rounded-lg border p-2 ${r.color}`}>
-              <p className="text-[11px] font-bold mb-1">{r.label}</p>
-              <p className="text-[10px] text-zinc-400 leading-relaxed">{r.desc}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Block types */}
-        <p className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">Block Types</p>
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          {[
-            { dot: 'bg-emerald-500', label: 'Triggers', items: 'Schedule · Webhook · Event · Manual · CLI' },
-            { dot: 'bg-blue-500',   label: 'Agent Blocks', items: 'RAG · Research · Verify · Translate · Compare · Tutor' },
-            { dot: 'bg-amber-500',  label: 'Logic Blocks', items: 'Filter · Branch (IF/ELSE) · Loop · Merge · Sort · Limit' },
-            { dot: 'bg-red-500',    label: 'Output Blocks', items: 'Email · WhatsApp · Discord · Telegram · HTTP · Hub Publish' },
-          ].map((b, i) => (
-            <div key={i} className="flex items-start gap-2 bg-zinc-800/40 rounded p-2 border border-zinc-800">
-              <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${b.dot}`}></div>
-              <div>
-                <p className="text-xs font-bold text-zinc-200">{b.label}</p>
-                <p className="text-[10px] text-zinc-500 leading-relaxed">{b.items}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Example pipeline as backend */}
-        <p className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">Example: App Using MSA as Full Backend</p>
-        <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-xs font-mono space-y-1 mb-3">
-          <div className="text-zinc-500">// React Native app — entire backend is one webhook</div>
-          <div className="text-zinc-400">POST <span className="text-orange-400">api.mishkat.app/automations/webhook/abc123</span></div>
-          <div className="text-zinc-400">{'{'} <span className="text-cyan-400">"query"</span>: <span className="text-emerald-400">"ما حكم صيام يوم الشك"</span>, <span className="text-cyan-400">"lang"</span>: <span className="text-emerald-400">"en"</span> {'}'}</div>
-          <div className="text-zinc-600">// MSA runs: RAG → Verify → Translate → Format</div>
-          <div className="text-zinc-400">{'{'} <span className="text-cyan-400">"answer"</span>: <span className="text-emerald-400">"..."</span>, <span className="text-cyan-400">"grade"</span>: <span className="text-emerald-400">"صحيح"</span>, <span className="text-cyan-400">"source"</span>: <span className="text-emerald-400">"البخاري 1906"</span>,</div>
-          <div className="text-zinc-400 pl-4"><span className="text-cyan-400">"translations"</span>: {'{'} <span className="text-emerald-400">"en"</span>: <span className="text-emerald-400">"..."</span>, <span className="text-emerald-400">"ur"</span>: <span className="text-emerald-400">"..."</span> {'}'} {'}'}</div>
-        </div>
-
-        {/* Real app examples */}
-        <p className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">Apps Anyone Can Build</p>
-        <div className="space-y-1.5">
-          {[
-            { icon: '📱', app: 'Hadith Verification Mobile App', desc: 'Frontend only — MSA handles all AI + verification' },
-            { icon: '🕌', app: 'Mosque Website Backend', desc: 'Prayer times + daily hadith + calendar via one GET request' },
-            { icon: '📚', app: 'Islamic Learning Flutter App', desc: 'Lessons + quizzes + translations — all from one pipeline' },
-            { icon: '🌐', app: 'Islamic Q&A Website', desc: 'Full 4-madhab fatwa answers — no backend written' },
-            { icon: '🤖', app: 'Daily Hadith WhatsApp Bot', desc: 'Schedule trigger → RAG → Translate → WhatsApp output' },
-          ].map((ex, i) => (
-            <div key={i} className="flex items-start gap-2 text-sm p-2 rounded border border-zinc-800 bg-zinc-800/20">
-              <span className="text-base shrink-0">{ex.icon}</span>
-              <div>
-                <span className="font-bold text-zinc-200">{ex.app}</span>
-                <span className="text-zinc-500 ml-2 text-xs">{ex.desc}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Pipeline marketplace */}
-        <div className="mt-3 p-3 bg-zinc-800/30 border border-zinc-700 rounded-lg">
-          <p className="text-xs font-bold text-zinc-200 mb-1">🛒 Pipeline Marketplace</p>
-          <p className="text-xs text-zinc-400 leading-relaxed">
-            Built pipelines can be <strong className="text-zinc-200">published to the marketplace</strong>. Any mosque, school, or developer installs them in one click — turning Mishkat into an <strong className="text-zinc-200">Islamic app ecosystem</strong>, not just a platform.
-          </p>
-        </div>
-
-        {/* Comparable to */}
-        <div className="mt-3 grid grid-cols-4 gap-1.5 text-center">
-          {[
-            { name: 'Firebase', role: 'Backend BaaS' },
-            { name: 'Supabase', role: 'DB BaaS' },
-            { name: 'OpenAI API', role: 'AI BaaS' },
-            { name: 'Mishkat MSA', role: 'Islamic Knowledge BaaS', highlight: true },
-          ].map((c, i) => (
-            <div key={i} className={`p-2 rounded border text-xs ${c.highlight ? 'border-orange-500/50 bg-orange-500/10 text-orange-300' : 'border-zinc-700 bg-zinc-800/30 text-zinc-400'}`}>
-              <p className="font-bold">{c.name}</p>
-              <p className="text-[10px] mt-0.5 opacity-70">{c.role}</p>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Hub Card */}
-      <Card title="Mishkat-Hub (Researcher Mode)" icon={BookOpen}>
-        <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
-          Full academic research environment. Moves beyond chat to structured query builders, methodology tracking, and real-time co-authoring via Yjs CRDT.
-        </p>
-        <div className="space-y-3">
-          {advancedAgents.map((aa, i) => (
-            <div key={i} className="border-l-2 border-orange-500/50 pl-3">
-              <h5 className="font-bold text-sm text-zinc-200">{aa.name}</h5>
-              <p className="text-xs text-zinc-500">{aa.desc}</p>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Input Modality & Platform features */}
-      <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card title="Multi-Modal Input" icon={Camera}>
-          <p className="text-sm text-zinc-400 leading-relaxed mb-3">
-            Intelligent routing for non-text inputs.
-          </p>
-          <ul className="text-sm text-zinc-300 space-y-2">
-            <li>📷 <strong>Image:</strong> Arabic OCR (Tesseract + TrOCR)</li>
-            <li>🎤 <strong>Audio:</strong> Whisper ASR (Arabic tuned)</li>
-            <li>📄 <strong>Doc:</strong> PDF/EPUB Parser</li>
-            <li>🔗 <strong>URL:</strong> Scraper + HTML cleaner</li>
-          </ul>
-        </Card>
-
-        <Card title="Islamic Calendar Engine" icon={CalendarDays}>
-          <p className="text-sm text-zinc-400 leading-relaxed mb-3">
-            System-wide Hijri awareness context.
-          </p>
-          <ul className="text-sm text-zinc-300 space-y-2">
-            <li>• Auto-surfaces relevant seasonal hadiths.</li>
-            <li>• Smart Prompt injection (e.g. Ramadan).</li>
-            <li>• Prayer Time Integration & Adhkar.</li>
-            <li>• Historical "On this day" lookups.</li>
-          </ul>
-        </Card>
-
-        <Card title="Org & Multi-Tenant" icon={Users}>
-          <p className="text-sm text-zinc-400 leading-relaxed mb-3">
-            Isolated instances with shared infrastructure.
-          </p>
-          <ul className="text-sm text-zinc-300 space-y-2">
-            <li>• Data Isolation (per-org DBs).</li>
-            <li>• Shared Global KB (Kutub al-Sittah).</li>
-            <li>• Custom Domains & Branding.</li>
-            <li>• SSO Integration (SAML/LDAP).</li>
-          </ul>
-        </Card>
       </div>
+    </div>
 
-      {/* Skill Engine & Mentions */}
-      <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card title="Skill Engine Anatomy" icon={Code2}>
-          <p className="text-xs text-zinc-500 mb-2">Skills are reusable NLP/Agent pipelines (YAML).</p>
-          <CodeBlock title="skills/hadith-formatter.yml" language="yaml" code={`name: hadith-formatter
-version: 1.2.0
-inputs:
-  - name: text
-    type: string
-steps:
-  - tool: arabic_clean
-    input: "{{ inputs.text }}"
-  - agent: summary
-    prompt: "Format in {{ inputs.style }}"`} />
-        </Card>
-        
-        <Card title="Advanced @ and / Command System" icon={Search}>
-          <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
-            Universal context-aware routing across the chat, documents, and Hub. Includes fuzzy-matching slash commands.
-          </p>
-          <div className="space-y-2 text-sm font-mono bg-zinc-950 p-4 rounded border border-zinc-800">
-            <div><span className="text-orange-400">@verify</span> <span className="text-zinc-300">هل حديث "..." صحيح؟</span></div>
-            <div><span className="text-orange-400">@bukhari:1906</span> <span className="text-zinc-300">Embed specific hadith</span></div>
-            <div><span className="text-cyan-400">/insert:table</span> <span className="text-zinc-300">madhab زكاة الفطر</span></div>
-            <div><span className="text-cyan-400">/agent:chain</span> <span className="text-zinc-300">research,verify,translate</span></div>
-            <div><span className="text-cyan-400">/export:latex</span> <span className="text-zinc-300">@doc:research_zakat</span></div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      {/* CLI Card — expanded */}
+      <Card title="Mishkat CLI (msk) — Research at Terminal Speed" icon={Terminal}>
+        <p className="text-sm text-zinc-400 mb-3 leading-relaxed">
+          The full power of Mishkat without a browser. Built in Go for sub-millisecond startup. 
+          Unix-philosophy design — every command pipes, every output is structured JSON or Markdown. 
+          Researchers can script entire multi-step hadith investigations, pipe results through jq, 
+          and integrate MSH into CI/CD pipelines, cron jobs, or Jupyter notebooks.
+        </p>
+        <div className="bg-orange-500/5 border border-orange-500/20 rounded-lg p-3 mb-3 text-xs text-orange-300">
+          <strong>Why this matters:</strong> A researcher can write a shell script that pulls all Sahih hadiths on a topic, 
+          runs isnad verification, translates them, and exports a structured Markdown report — completely automated, repeatable, 
+          and schedulable. No browser. No clicking. Pure scholarship at scale.
+        </div>
+        <CodeBlock title="Terminal — Research Automation Examples" code={`# Authenticate once
+$ msk auth login --totp
+
+# Query with full JSON output — pipe into analysis tools
+$ msk query "حكم الزكاة على الأسهم" --agent research --format json \\
+  | jq '.sources[] | {grade, book, number, narrator}'
+
+# Run a full chain: research → verify → translate → save report
+$ msk agent run chain research,verify,translate \\
+  --topic "صيام رمضان" --lang en --output ./reports/siyam.md
+
+# Bulk-verify a list of hadiths from a CSV
+$ cat hadiths.csv | msk verify --batch --format table
+
+# Pull a knowledge snapshot (offline-capable via .mishkat.zst)
+$ msk knowledge snapshot create --ref bukhari --compress zstd
+$ msk knowledge snapshot load ./bukhari-v3.mishkat.zst
+
+# Sync your institution's curated KB deltas
+$ msk sync pull bukhari --delta-only
+$ msk sync edit hadith:bukhari:1906 --note "Correct narrator chain"
+$ msk sync push --review-required
+
+# Flush caches and audit logs
+$ msk admin cache flush --service qdrant
+$ msk admin audit-log --user scholar@uni.edu --last 30d`} />
+      </Card>
+
+      {/* MKS Card — expanded */}
+      <Card title="Mishkat Knowledge Sync (MKS) — Git for Islamic Knowledge" icon={RefreshCw}>
+        <p className="text-sm text-zinc-400 mb-3 leading-relaxed">
+          MKS is a <strong className="text-zinc-100">distributed knowledge versioning and synchronization protocol</strong> — 
+          the Git of Islamic knowledge infrastructure. Universities, research institutes, and individual scholars 
+          can maintain their own curated, versioned forks of the global corpus, apply incremental edits (deltas), 
+          share corrections upstream, and keep their local systems perfectly synchronized — even offline.
+        </p>
+        <div className="bg-orange-500/5 border border-orange-500/20 rounded-lg p-3 mb-3 text-xs text-orange-300">
+          <strong>Why this matters:</strong> When a leading hadith institute corrects a narrator attribution, that delta 
+          propagates as a typed patch to every subscribing institution's Qdrant collection within minutes — no manual 
+          re-ingestion, no broken embeddings. The entire scholarly community stays in sync with verified corrections automatically.
+        </div>
+        <div className="bg-zinc-950 p-4 rounded-lg border border-zinc-800 text-sm font-mono space-y-2 mb-3">
+          <div className="text-zinc-600 text-xs mb-2">// MKS Protocol — knowledge lifecycle</div>
+          <div className="flex justify-between items-center"><span className="text-zinc-400">msk sync pull bukhari</span><span className="text-emerald-400 text-xs">↓ Download full .mishkat.zst package</span></div>
+          <div className="flex justify-between items-center"><span className="text-zinc-400">msk sync edit hadith:bukhari:1906</span><span className="text-blue-400 text-xs">✏ Propose incremental correction</span></div>
+          <div className="flex justify-between items-center"><span className="text-zinc-400">msk sync push --review</span><span className="text-amber-400 text-xs">↑ Submit for Scholar review queue</span></div>
+          <div className="flex justify-between items-center"><span className="text-zinc-400">msk sync update --delta</span><span className="text-orange-400 text-xs">⚡ Apply only changed vectors</span></div>
+          <div className="flex justify-between items-center"><span className="text-zinc-400">msk sync snapshot tag v2.4.0</span><span className="text-purple-400 text-xs">🏷 Version-pin your corpus state</span></div>
+          <div className="flex justify-between items-center"><span className="text-zinc-400">msk sync diff v2.3.0 v2.4.0</span><span className="text-cyan-400 text-xs">🔍 Inspect what changed</span></div>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: '.mishkat.zst', desc: 'Binary-compressed snapshot of vectors + metadata. Self-contained. Portable.', color: 'border-cyan-800/40 bg-cyan-900/10 text-cyan-400' },
+            { label: 'Delta Patches', desc: 'Only changed embeddings transmitted. 98% bandwidth savings vs full re-sync.', color: 'border-emerald-800/40 bg-emerald-900/10 text-emerald-400' },
+            { label: 'Signed Commits', desc: 'Every edit cryptographically signed by the Scholar\'s key. Full audit trail.', color: 'border-amber-800/40 bg-amber-900/10 text-amber-400' },
+          ].map((f, i) => (
+            <div key={i} className={`rounded-lg border p-2 ${f.color}`}>
+              <p className="text-[11px] font-bold font-mono mb-1">{f.label}</p>
+              <p className="text-[10px] text-zinc-400 leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* MSA Canvas Card — full width, deeply expanded */}
+      <div className="lg:col-span-2">
+        <Card title="Mishkat Automation Canvas (MSA) — No-Code Islamic App Builder & BaaS Platform" icon={Workflow}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <p className="text-sm text-zinc-400 mb-3 leading-relaxed">
+                MSA is the <strong className="text-zinc-100">backbone infrastructure layer</strong> of Mishkat — a visual, no-code platform 
+                that lets anyone (developer, scholar, mosque admin, NGO worker) build fully functional Islamic applications 
+                and automated research workflows without writing a single line of backend or AI code.
+              </p>
+              <div className="bg-orange-500/5 border border-orange-500/20 rounded-lg p-3 mb-4">
+                <p className="text-xs text-orange-300 font-semibold uppercase tracking-wider mb-1">The Core Insight</p>
+                <p className="text-sm text-zinc-300 leading-relaxed">
+                  Build your entire app frontend (React, Flutter, Next.js, or plain HTML) and 
+                  use <strong className="text-zinc-100">a single MSA Webhook URL as your complete backend</strong>. 
+                  One POST request triggers a full RAG → Verify → Translate → Format pipeline 
+                  and returns production-ready structured JSON. No servers provisioned. 
+                  No AI APIs configured. No DevOps. Just your UI and one endpoint.
+                </p>
+              </div>
+
+              <p className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">Who MSA is For</p>
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {[
+                  { label: '⚖️ Scholars', desc: 'Build automated fatwa research pipelines, scheduled hadith digests, and peer-review workflows — all visually', color: 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400' },
+                  { label: '💻 Developers', desc: 'Use MSA as your Islamic AI backend. One webhook call replaces months of RAG engineering and hadith data work', color: 'border-blue-500/30 bg-blue-500/5 text-blue-400' },
+                  { label: '🏛️ Institutions', desc: 'Automate daily hadith emails, student quiz generation, and curriculum delivery — zero IT team required', color: 'border-amber-500/30 bg-amber-500/5 text-amber-400' },
+                ].map((r, i) => (
+                  <div key={i} className={`rounded-lg border p-2.5 ${r.color}`}>
+                    <p className="text-[11px] font-bold mb-1">{r.label}</p>
+                    <p className="text-[10px] text-zinc-400 leading-relaxed">{r.desc}</p>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">Block Types — The Full Node Library</p>
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {[
+                  { dot: 'bg-emerald-500', label: 'Triggers', items: 'Schedule (cron) · Webhook (POST/GET) · Kafka Event · Manual Run · CLI Trigger · Hijri Calendar Event · Scholar Approval · File Upload' },
+                  { dot: 'bg-blue-500',   label: 'Agent Blocks', items: 'RAG Query · Deep Research · Isnad Verify · 4-Madhab Compare · Translate (8 langs) · Tutor Quiz · Summarize · Fatwa Draft · Citation Graph' },
+                  { dot: 'bg-amber-500',  label: 'Logic & Control', items: 'IF/ELSE Branch · Switch · Loop (forEach) · Merge · Sort & Rank · Limit/Paginate · Error Retry · Confidence Gate · Human-in-the-Loop pause' },
+                  { dot: 'bg-purple-500', label: 'Data Blocks', items: 'MongoDB Read/Write · Redis Cache · Qdrant Vector Search · S3 File · CSV/JSON Parser · Hadith Lookup · Quran Verse · Narrator DB Query' },
+                  { dot: 'bg-red-500',    label: 'Output & Notify', items: 'HTTP Response · Email (SMTP) · WhatsApp · Telegram · Discord · SMS · Push Notification · Hub Publish · PDF Export · LaTeX Export' },
+                  { dot: 'bg-cyan-500',   label: 'Custom Code', items: 'Python Snippet · JavaScript Node · Shell Command · gRPC Call · External API · SQL Query · Jinja Template render' },
+                ].map((b, i) => (
+                  <div key={i} className="flex items-start gap-2 bg-zinc-800/40 rounded p-2.5 border border-zinc-800">
+                    <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${b.dot}`}></div>
+                    <div>
+                      <p className="text-xs font-bold text-zinc-200">{b.label}</p>
+                      <p className="text-[10px] text-zinc-500 leading-relaxed">{b.items}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">Example: Complete App — Zero Backend Code Written</p>
+              <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-xs font-mono space-y-1 mb-4">
+                <div className="text-zinc-600">// React Native app — MSA IS the entire backend</div>
+                <div className="text-zinc-400">POST <span className="text-orange-400">api.mishkat.app/automations/webhook/abc123</span></div>
+                <div className="text-zinc-400">{'{'}</div>
+                <div className="text-zinc-400 pl-4"><span className="text-cyan-400">"query"</span>: <span className="text-emerald-400">"ما حكم صيام يوم الشك"</span>,</div>
+                <div className="text-zinc-400 pl-4"><span className="text-cyan-400">"lang"</span>: <span className="text-emerald-400">"en"</span>,</div>
+                <div className="text-zinc-400 pl-4"><span className="text-cyan-400">"madhab"</span>: <span className="text-emerald-400">"all"</span></div>
+                <div className="text-zinc-400">{'}'}</div>
+                <div className="text-zinc-600 mt-2">// MSA Pipeline: RAG → Verify → 4-Madhab → Translate → Format</div>
+                <div className="text-zinc-400">{'{'}</div>
+                <div className="text-zinc-400 pl-4"><span className="text-cyan-400">"answer"</span>: <span className="text-emerald-400">"Scholars differ on this..."</span>,</div>
+                <div className="text-zinc-400 pl-4"><span className="text-cyan-400">"grade"</span>: <span className="text-emerald-400">"صحيح"</span>,</div>
+                <div className="text-zinc-400 pl-4"><span className="text-cyan-400">"source"</span>: <span className="text-emerald-400">"البخاري 1906 · Muslim 1080"</span>,</div>
+                <div className="text-zinc-400 pl-4"><span className="text-cyan-400">"madhab_opinions"</span>: {'{'} <span className="text-emerald-400">"hanafi"</span>: <span className="text-emerald-400">"..."</span>, <span className="text-emerald-400">"maliki"</span>: <span className="text-emerald-400">"..."</span> ... {'}'},</div>
+                <div className="text-zinc-400 pl-4"><span className="text-cyan-400">"isnad_confidence"</span>: <span className="text-emerald-400">0.94</span>,</div>
+                <div className="text-zinc-400 pl-4"><span className="text-cyan-400">"translations"</span>: {'{'} <span className="text-emerald-400">"en"</span>: <span className="text-emerald-400">"..."</span>, <span className="text-emerald-400">"ur"</span>: <span className="text-emerald-400">"..."</span>, <span className="text-emerald-400">"fr"</span>: <span className="text-emerald-400">"..."</span> {'}'}</div>
+                <div className="text-zinc-400">{'}'}</div>
+              </div>
+
+              <p className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">Real-World Applications Anyone Can Deploy</p>
+              <div className="space-y-1.5 mb-4">
+                {[
+                  { icon: '📱', app: 'Hadith Verification Mobile App', desc: 'Frontend-only app — MSA handles all AI, isnad grading, and Rijal lookups as a single webhook' },
+                  { icon: '🕌', app: 'Mosque Digital Platform', desc: 'Prayer times + daily hadith + khutbah summaries + Hijri events — all from one scheduled MSA pipeline' },
+                  { icon: '📚', app: 'Adaptive Islamic Learning App', desc: 'Lesson delivery + Socratic quizzes + progress tracking — MSA Tutor Agent powers the entire curriculum backend' },
+                  { icon: '🌐', app: 'Scholar Q&A Portal', desc: '4-madhab fatwa responses with full evidence citations — published to Hub after Scholar approval. Zero infrastructure owned.' },
+                  { icon: '🤖', app: 'Daily Hadith WhatsApp/Telegram Bot', desc: 'Cron trigger → RAG → Verify → Translate → Push to WhatsApp API. Runs daily, fully automated' },
+                  { icon: '🎓', app: 'University Research Assistant', desc: 'Students submit topics → MSA runs systematic review → outputs PRISMA report + citation network graph' },
+                  { icon: '📡', app: 'Hadith RSS/API Feed Service', desc: 'Any third-party app subscribes to a live feed of verified hadiths by topic, grade, or madhab via MSA webhooks' },
+                  { icon: '🔔', app: 'Scholar Peer Review Notification System', desc: 'Research submission triggers review queue → MSA notifies assigned scholars → collects approvals → auto-publishes' },
+                ].map((ex, i) => (
+                  <div key={i} className="flex items-start gap-2 text-sm p-2 rounded border border-zinc-800 bg-zinc-800/20 hover:border-orange-500/30 transition-colors">
+                    <span className="text-base shrink-0 mt-0.5">{ex.icon}</span>
+                    <div>
+                      <span className="font-bold text-zinc-200 text-xs">{ex.app}</span>
+                      <p className="text-zinc-500 text-[11px] mt-0.5 leading-relaxed">{ex.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-3 bg-zinc-800/30 border border-zinc-700 rounded-lg mb-3">
+                <p className="text-xs font-bold text-zinc-200 mb-1">🛒 Pipeline Marketplace — The Islamic App Ecosystem</p>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Any MSA pipeline can be <strong className="text-zinc-200">published to the Marketplace</strong>. 
+                  Mosques, schools, and developers install pre-built pipelines with one click — 
+                  zero configuration. Mishkat becomes the <strong className="text-zinc-200">npm registry for Islamic AI applications</strong>: 
+                  a living ecosystem where the community builds and shares production-ready 
+                  knowledge infrastructure.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-4 gap-1.5 text-center">
+                {[
+                  { name: 'Firebase', role: 'Backend BaaS' },
+                  { name: 'Supabase', role: 'DB + Auth BaaS' },
+                  { name: 'OpenAI API', role: 'AI BaaS' },
+                  { name: 'Mishkat MSA', role: 'Islamic Knowledge BaaS', highlight: true },
+                ].map((c, i) => (
+                  <div key={i} className={`p-2 rounded border text-xs ${c.highlight ? 'border-orange-500/50 bg-orange-500/10 text-orange-300' : 'border-zinc-700 bg-zinc-800/30 text-zinc-400'}`}>
+                    <p className="font-bold">{c.name}</p>
+                    <p className="text-[10px] mt-0.5 opacity-70">{c.role}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </Card>
       </div>
+
+      {/* Mishkat-Hub — full width, deeply expanded */}
+      <div className="lg:col-span-2">
+        <Card title="Mishkat-Hub — The Academic Research Command Center" icon={BookOpen}>
+          <div className="mb-4 p-4 bg-orange-500/5 border border-orange-500/20 rounded-xl">
+            <p className="text-sm text-zinc-300 leading-relaxed">
+              Mishkat-Hub transforms MSH from a query tool into a <strong className="text-orange-300">full scholarly research environment</strong> — 
+              combining real-time collaborative document authoring, structured multi-source research workflows, 
+              citation graph visualization, isnad network mapping, systematic review tools, peer review queues, 
+              and community forum threads — all in one unified workspace. 
+              It is what <strong className="text-zinc-100">Notion + Zotero + Overleaf + a hadith corpus + a fatwa council</strong> would look like if built natively for Islamic scholarship.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">Research Studio — Powered by Yjs CRDT</h4>
+              <div className="space-y-2 mb-4">
+                {[
+                  { icon: '✍️', title: 'Real-Time Co-Authoring', desc: 'Multiple scholars edit the same research document simultaneously via Tiptap + Yjs CRDT. Live cursors, presence indicators, and conflict-free merging — just like Google Docs but built for Islamic research papers with inline hadith embedding.' },
+                  { icon: '🔖', title: 'Structured Query Builder', desc: 'Instead of free-text chat, researchers build explicit queries: Select sources (Bukhari, Muslim, Tafsir Ibn Kathir), set madhab context, choose verification depth, and define output format (table, narrative, PRISMA). Results are reproducible and auditable.' },
+                  { icon: '📋', title: 'Methodology Audit Log', desc: 'Every usul principle applied, every source included or excluded, and every agent call made during a research session is automatically logged. Attach the log to any academic submission for full methodological transparency.' },
+                  { icon: '📤', title: 'One-Click Export', desc: 'Export complete research papers to LaTeX, Markdown, PDF, Word, or BibTeX-compatible citation lists. Arabic RTL formatting, footnotes, and isnad chains are preserved exactly.' },
+                ].map((f, i) => (
+                  <div key={i} className="flex gap-3 p-3 rounded-lg border border-zinc-800 bg-zinc-800/20 hover:border-orange-500/30 transition-colors">
+                    <span className="text-xl shrink-0">{f.icon}</span>
+                    <div>
+                      <p className="text-sm font-bold text-zinc-200 mb-0.5">{f.title}</p>
+                      <p className="text-xs text-zinc-500 leading-relaxed">{f.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">Advanced Research Agents (Hub-Exclusive)</h4>
+              <div className="space-y-3">
+                {advancedAgents.map((aa, i) => (
+                  <div key={i} className="border-l-2 border-orange-500/40 pl-3 hover:border-orange-500 transition-colors">
+                    <h5 className="font-bold text-sm text-zinc-200 mb-0.5">{aa.name}</h5>
+                    <p className="text-xs text-zinc-500 leading-relaxed">{aa.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">Citation & Isnad Network Visualization</h4>
+              <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 mb-4">
+                <p className="text-xs text-zinc-400 leading-relaxed mb-3">
+                  Every hadith in the corpus is mapped into a <strong className="text-zinc-200">force-directed knowledge graph</strong>. 
+                  Researchers can visually explore how narrations cluster by theme, how narrators connected, 
+                  where chains converge or diverge, and which scholars cited which texts across centuries. 
+                  Graphs are interactive, zoomable, and exportable to DOT/GraphML for external analysis tools.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: 'Node types', val: 'Hadith · Narrator · Scholar · Book · Topic · Madhab' },
+                    { label: 'Edge types', val: 'Narrated-by · Cited-in · Cross-references · Shares-isnad' },
+                    { label: 'Export formats', val: 'DOT · GraphML · JSON · Interactive D3 embed' },
+                    { label: 'Use cases', val: 'Isnad analysis · Thematic clustering · Scholar lineage · Consensus mapping' },
+                  ].map((g, i) => (
+                    <div key={i} className="bg-zinc-900 rounded p-2 border border-zinc-800">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">{g.label}</p>
+                      <p className="text-[11px] text-zinc-300 leading-relaxed">{g.val}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">Scholar Peer Review & Publication Workflow</h4>
+              <div className="space-y-2 mb-4">
+                {[
+                  { step: '01', label: 'Submission', desc: 'Researcher submits paper or fatwa draft. System auto-attaches sources, confidence scores, and methodology log.' },
+                  { step: '02', label: 'Assignment', desc: 'Hub automatically routes to qualified Scholar reviewers based on topic, madhab, and expertise tags.' },
+                  { step: '03', label: 'Review', desc: 'Scholars annotate inline, run verification queries from Hub, and vote Approve / Request Revision / Reject.' },
+                  { step: '04', label: 'Publication', desc: 'Approved content is published to Hub with Scholar attribution, timestamp, and permanent DOI-style reference ID.' },
+                ].map((s, i) => (
+                  <div key={i} className="flex gap-3 items-start">
+                    <span className="font-mono text-xs text-orange-400 bg-orange-500/10 border border-orange-500/20 px-1.5 py-0.5 rounded shrink-0 mt-0.5">{s.step}</span>
+                    <div>
+                      <p className="text-xs font-bold text-zinc-200">{s.label}</p>
+                      <p className="text-[11px] text-zinc-500 leading-relaxed">{s.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">Community & @mention System</h4>
+              <div className="space-y-2 text-xs font-mono bg-zinc-950 p-3 rounded border border-zinc-800">
+                <div className="text-zinc-500">// Inline @mentions route anywhere in the system</div>
+                <div><span className="text-orange-400">@scholar:ibn-baz</span> <span className="text-zinc-400">— cites a specific scholar's published opinion</span></div>
+                <div><span className="text-orange-400">@bukhari:1906</span> <span className="text-zinc-400">— embeds the full hadith inline in the discussion</span></div>
+                <div><span className="text-orange-400">@research:my-zakat-paper</span> <span className="text-zinc-400">— links your saved research project</span></div>
+                <div><span className="text-cyan-400">/verify @bukhari:1906</span> <span className="text-zinc-400">— trigger isnad check from forum thread</span></div>
+                <div><span className="text-cyan-400">/compare hanafi maliki</span> <span className="text-zinc-400">— spawn comparison table in-thread</span></div>
+                <div><span className="text-cyan-400">/export:pdf @doc:zakat-research</span> <span className="text-zinc-400">— export paper from thread</span></div>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Input Modality + Calendar + Multi-Tenant */}
+      <Card title="Multi-Modal Input Processing" icon={Camera}>
+        <p className="text-sm text-zinc-400 leading-relaxed mb-3">
+          MSH accepts any input format a researcher works with. Every modality is intelligently routed 
+          through the appropriate preprocessing pipeline before hitting the AI engine — 
+          so a photo of a manuscript page produces the same quality analysis as typed Arabic text.
+        </p>
+        <div className="space-y-2">
+          {[
+            { icon: '📷', label: 'Image / Manuscript Scan', desc: 'Tesseract + TrOCR Arabic OCR pipeline. Handles historical manuscripts, printed books, handwritten notes. Detects RTL columns, diacritics, and marginalia. Extracted text feeds directly into RAG.' },
+            { icon: '🎤', label: 'Voice / Audio Query', desc: 'Whisper ASR fine-tuned for Classical Arabic, Quranic recitation, and Islamic terminology. Researchers dictate complex queries without switching to keyboard. Supports 8 languages.' },
+            { icon: '📄', label: 'PDF / EPUB / DOCX', desc: 'Full document parsing preserving structure, footnotes, chapter hierarchy, and cross-references. Automatic chunking, embedding, and indexing into the researcher\'s private Qdrant collection.' },
+            { icon: '🔗', label: 'URL / Web Scrape', desc: 'Scrapes any URL, cleans HTML, removes boilerplate, and feeds structured content to the agent pipeline. Used for fetching fatwa websites, online tafsir, or contemporary scholarly articles.' },
+          ].map((m, i) => (
+            <div key={i} className="flex gap-3 p-2.5 rounded border border-zinc-800 bg-zinc-800/20">
+              <span className="text-lg shrink-0">{m.icon}</span>
+              <div>
+                <p className="text-xs font-bold text-zinc-200">{m.label}</p>
+                <p className="text-[11px] text-zinc-500 leading-relaxed">{m.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card title="Islamic Calendar Engine — Hijri-Aware Intelligence" icon={CalendarDays}>
+        <p className="text-sm text-zinc-400 leading-relaxed mb-3">
+          MSH operates with full Hijri calendar awareness — surfacing contextually relevant 
+          knowledge based on the Islamic date, season, and upcoming events without any user prompt.
+        </p>
+        <div className="space-y-2">
+          {[
+            { label: 'Automatic Seasonal Context Injection', desc: 'During Ramadan, the system automatically surfaces fasting hadiths, laylat al-qadr narrations, and zakat al-fitr rulings into every relevant response — without the user asking.' },
+            { label: 'Smart Prompt Priming', desc: 'The current Hijri date is injected into every agent\'s system context. "What should I focus on today?" correctly answers with relevant ibadah, historical events, and scholarly reminders for that exact day.' },
+            { label: 'Prayer Time API Integration', desc: 'Real-time prayer times (Fajr to Isha) with adhkar reminders are accessible as a tool and webhook block inside MSA. Mosques can automate daily digital bulletin boards from one pipeline.' },
+            { label: '"On This Hijri Day" Research', desc: 'Query historical events, births of scholars, or significant rulings that occurred on any Hijri date across Islamic history — sourced from ingested tarikh and sirah collections.' },
+          ].map((f, i) => (
+            <div key={i} className="border-l-2 border-orange-500/30 pl-3 py-1 hover:border-orange-500 transition-colors">
+              <p className="text-xs font-bold text-zinc-200 mb-0.5">{f.label}</p>
+              <p className="text-[11px] text-zinc-500 leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card title="Multi-Tenant & Institutional Deployment" icon={Users}>
+        <p className="text-sm text-zinc-400 leading-relaxed mb-3">
+          Universities, seminaries, and Islamic organizations get their own fully isolated MSH instance 
+          with shared global infrastructure — complete data sovereignty with zero operational overhead.
+        </p>
+        <div className="space-y-2">
+          {[
+            { label: 'Complete Data Isolation', desc: 'Per-organization MongoDB databases, Qdrant collections, and Redis namespaces. No cross-tenant data leakage possible by design. Institutions own their curated knowledge.' },
+            { label: 'Shared Global Knowledge Base', desc: 'All organizations benefit from the shared Kutub al-Sittah, Quran, Tafsir, and Narrator DB without duplicating storage — 50GB+ of verified Islamic content available day one.' },
+            { label: 'Custom Domain & White-Label Branding', desc: 'Universities deploy MSH under their own domain (research.azhar.edu) with custom logos, color schemes, and welcome screens. Students see the institution\'s brand, not Mishkat\'s.' },
+            { label: 'SSO / LDAP / SAML Integration', desc: 'Students and faculty log in with their existing university credentials. No separate account creation. Works with Microsoft Entra ID, Google Workspace, and any SAML 2.0 provider.' },
+            { label: 'Dedicated Scholar Review Committees', desc: 'Institutions configure their own scholar review boards with custom approval workflows. A fatwa generated by a student at Al-Azhar is reviewed by Al-Azhar\'s committee — not a shared pool.' },
+          ].map((f, i) => (
+            <div key={i} className="border-l-2 border-blue-500/30 pl-3 py-1 hover:border-blue-500 transition-colors">
+              <p className="text-xs font-bold text-zinc-200 mb-0.5">{f.label}</p>
+              <p className="text-[11px] text-zinc-500 leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Skill Engine — expanded */}
+      <Card title="Skill Engine — Reusable Intelligence Pipelines" icon={Code2}>
+        <p className="text-sm text-zinc-400 mb-3 leading-relaxed">
+          Skills are <strong className="text-zinc-100">shareable, versioned, YAML-defined agent pipelines</strong> — 
+          reusable sequences of tools and agent calls that encapsulate domain expertise. 
+          A scholar who builds the perfect "Hadith Authentication + Summary + Translation" pipeline 
+          publishes it as a Skill — and every institution in the ecosystem installs it in one click.
+        </p>
+        <div className="bg-orange-500/5 border border-orange-500/20 rounded-lg p-3 mb-3 text-xs text-orange-300">
+          <strong>The power:</strong> Skills are the <em>npm packages of Islamic AI</em>. Once built, the community 
+          benefits forever. A skill built by a rijal expert for narrator chain validation becomes available 
+          to every student and researcher on the platform — turning individual expertise into shared infrastructure.
+        </div>
+        <CodeBlock title="skills/systematic-hadith-review.yml" language="yaml" code={`name: systematic-hadith-review
+version: 2.1.0
+description: >
+  Full academic systematic review pipeline for any Islamic research topic.
+  Produces PRISMA flow diagram, evidence table, and citation network.
+author: research@example-institute.edu
+inputs:
+  - name: topic
+    type: string
+    description: Arabic or English research question
+  - name: madhab
+    type: enum
+    values: [hanafi, maliki, shafii, hanbali, all]
+  - name: output_lang
+    type: string
+    default: en
+steps:
+  - tool: vector_search
+    input: "{{ inputs.topic }}"
+    collections: [hadith, tafsir, fiqh, fatawa]
+  - agent: research
+    tools: [quran_search, web_search, narrator_search]
+    depth: comprehensive
+  - tool: verify_isnad
+    for_each: "{{ steps[0].results }}"
+  - agent: comparative
+    madhabs: "{{ inputs.madhab }}"
+  - tool: translate_text
+    target: "{{ inputs.output_lang }}"
+  - agent: summarize
+    format: prisma_systematic_review
+  - tool: save_research
+    export: [pdf, latex, bibtex, graphml]`} />
+      </Card>
+
+      {/* @ and / Command System — expanded */}
+      <Card title="@ and / Command System — Universal Research Shortcuts" icon={Search}>
+        <p className="text-sm text-zinc-400 mb-3 leading-relaxed">
+          A <strong className="text-zinc-100">context-aware command language</strong> that works everywhere in MSH — 
+          in the chat interface, inside Hub research documents, in forum threads, and in CLI pipelines. 
+          It gives researchers keyboard-speed access to the entire system without leaving their current workflow.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">@mention — Embed Anywhere</p>
+            <div className="space-y-1.5 text-xs font-mono bg-zinc-950 p-3 rounded border border-zinc-800">
+              <div><span className="text-orange-400">@verify</span> <span className="text-zinc-300">هل حديث "طلب العلم فريضة" صحيح؟</span></div>
+              <div className="text-zinc-600 pl-2">→ Runs full isnad verification inline</div>
+              <div className="mt-1"><span className="text-orange-400">@bukhari:1906</span> <span className="text-zinc-300">show full text</span></div>
+              <div className="text-zinc-600 pl-2">→ Embeds full hadith with narrator chain</div>
+              <div className="mt-1"><span className="text-orange-400">@narrator:abu-hurayra</span></div>
+              <div className="text-zinc-600 pl-2">→ Opens narrator profile from Rijal DB</div>
+              <div className="mt-1"><span className="text-orange-400">@fatwa:zakat-stocks-2024</span></div>
+              <div className="text-zinc-600 pl-2">→ Cites a published Hub fatwa by ID</div>
+              <div className="mt-1"><span className="text-orange-400">@research:my-project</span></div>
+              <div className="text-zinc-600 pl-2">→ Links your saved research project</div>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">/command — Trigger Actions</p>
+            <div className="space-y-1.5 text-xs font-mono bg-zinc-950 p-3 rounded border border-zinc-800">
+              <div><span className="text-cyan-400">/agent:chain</span> <span className="text-zinc-300">research,verify,translate</span></div>
+              <div className="text-zinc-600 pl-2">→ Chains agents in sequence on current query</div>
+              <div className="mt-1"><span className="text-cyan-400">/insert:table</span> <span className="text-zinc-300">madhab زكاة الفطر</span></div>
+              <div className="text-zinc-600 pl-2">→ Generates 4-madhab comparison table inline</div>
+              <div className="mt-1"><span className="text-cyan-400">/export:latex</span> <span className="text-zinc-300">@doc:zakat-research</span></div>
+              <div className="text-zinc-600 pl-2">→ Exports full paper to LaTeX format</div>
+              <div className="mt-1"><span className="text-cyan-400">/skill:run</span> <span className="text-zinc-300">systematic-hadith-review</span></div>
+              <div className="text-zinc-600 pl-2">→ Executes a published Skill pipeline</div>
+              <div className="mt-1"><span className="text-cyan-400">/publish:hub</span> <span className="text-zinc-300">@doc:my-fatwa --review</span></div>
+              <div className="text-zinc-600 pl-2">→ Submits to Scholar review queue</div>
+            </div>
+          </div>
+        </div>
+      </Card>
 
     </div>
   </div>
