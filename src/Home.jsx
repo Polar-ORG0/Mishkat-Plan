@@ -5,12 +5,12 @@ import {
   Layers, CheckCircle2, Activity, BookOpen, 
   Cpu, FileText, MessagesSquare, Check,
   AlertTriangle, Settings, Camera, CalendarDays, Users,
-  RefreshCw, ChevronDown, ChevronRight, ListChecks, Link
+  RefreshCw, ChevronDown, ChevronRight, ListChecks
 } from 'lucide-react';
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-
+import { Link } from 'react-router-dom';
 import "highlight.js/styles/github-dark.css";
 
 // Assuming these are loaded correctly in your environment
@@ -1342,7 +1342,7 @@ $ msk admin audit-log --user scholar@uni.edu --last 30d`} />
       </Card>
 
       {/* MKS Card — expanded */}
-      <a href="/mks" className="no-underline hover:underline">
+      <Link to="/mks">
       <Card title="Mishkat Knowledge Sync (MKS) — Git for Islamic Knowledge" icon={RefreshCw}>
         <p className="text-sm text-zinc-400 mb-3 leading-relaxed">
           MKS is a <strong className="text-zinc-100">distributed knowledge versioning and synchronization protocol</strong> — 
@@ -1377,7 +1377,7 @@ $ msk admin audit-log --user scholar@uni.edu --last 30d`} />
           ))}
         </div>
       </Card>
-      </a>
+      </Link>
 
 
       {/* MSA Canvas Card — full width, deeply expanded */}
